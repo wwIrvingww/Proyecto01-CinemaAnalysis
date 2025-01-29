@@ -7,24 +7,78 @@ output: html_document
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
+library(knitr)
+library(dplyr)
+library(kableExtra)
 ```
 
-## R Markdown
+# Fase Exploratoria  
+En esta fase se hará un breve análisis de exploración del dataset en donde se conocerán datos generales, cómo el tipo de las varaibles, sus distribuciones o formas. Además se plantena preguntas superficiales para comenzar a familiarizarse con el dataset, cómo conocer las películas más vistas, actores, géneros más populares y otras características importantes para entender las variables.
 
-This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
 
-When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
 
-```{r cars}
-summary(cars)
+```{r, include=FALSE}
+movies <- read.csv("./movies.csv")
+
 ```
 
-## Including Plots
-
-You can also embed plots, for example:
-
-```{r pressure, echo=FALSE}
-plot(pressure)
+```{r, include=FALSE}
+summary(movies)
 ```
 
-Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+
+
+## Variables
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+
+table_variables <- data.frame(
+  Variable = c("Id", "popularity", "budget", "revenue", "original_title", 
+               "originalLanguage", "title", "homePage", "video", "director",
+               "runtime", "genres", "genresAmount", "productionCompany",
+               "productionCoAmount", "productionCompanyCountry", "productionCountry",
+               "productionCountriesAmount", "releaseDate", "voteCount",
+               "voteAvg", "actors", "actorsPopularity", "actorsCharacter",
+               "actorsAmount", "castWomenAmount", "castMenAmount"),
+  Description = c("Id de la película", "Índice de popularidad de la película calculado semanalmente", 
+                  "El presupuesto para la película.", "El ingreso de la película", 
+                  "El título original de la película, en su idioma original.", 
+                  "Idioma original en que se encuentra la película", 
+                  "El título de la película traducido al inglés", 
+                  "La página de inicio de la película", 
+                  "Si tiene videos promocionales o no", 
+                  "Director de la película",
+                  "La duración de la película", "El género de la película", 
+                  "Cantidad de géneros que representan la película", 
+                  "Las compañías productoras de la película", 
+                  "Cantidad de compañías productoras que participaron en la película", 
+                  "Países de las compañías productoras de la película", 
+                  "Países en los que se llevó a cabo la producción de la película",
+                  "Cantidad de países en los que se rodó la película",
+                  "Fecha de lanzamiento de la película",
+                  "El número de votos en la plataforma para la película.",
+                  "El promedio de los votos en la plataforma para la película",
+                  "Actores que participan en la película (Elenco)",
+                  "Índice de popularidad del elenco de la película.",
+                  "Personaje que interpreta cada actor en la película",
+                  "Cantidad de personas que actúan en la película",
+                  "Cantidad de actrices en el elenco de la película",
+                  "Cantidad de actores en el elenco de la película"),
+  Type = c("Cualitativa nominal", "Cuantitativa continua", "Cuantitativa discreta",
+           "Cuantitativa discreta", "Cualitativa nominal", "Cualitativa nominal", 
+           "Cualitativa nominal", "Cualitativa nominal", "Cualitativa nominal", 
+           "Cualitativa nominal", "Cuantitativa continua", "Cualitativa nominal", 
+           "Cuantitativa discreta", "Cualitativa nominal", "Cuantitativa discreta",
+           "Cualitativa nominal", "Cualitativa nominal", "Cuantitativa discreta", 
+           "Cuantitativa discreta", "Cuantitativa discreta", "Cuantitativa continua", 
+           "Cualitativa nominal", "Cuantitativa continua", "Cualitativa nominal", 
+           "Cuantitativa discreta", "Cuantitativa discreta", "Cuantitativa discreta")
+)
+
+table <- kable(table_variables, format = "html", caption = "table de Variables de CineAnalysis")
+table <- kable_styling(table, bootstrap_options = c("striped", "hover", "condensed", "responsive"), full_width = FALSE)
+table <- column_spec(table, 1, width = "20%")
+table <- column_spec(table, 2, width = "50%")
+table <- column_spec(table, 3, width = "20%")
+table
+```
