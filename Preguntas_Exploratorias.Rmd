@@ -1,0 +1,60 @@
+---
+title: "Preguntas_Exploratorias"
+author: "Irving, Chuy"
+date: "2025-01-30"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(knitr)
+library(dplyr)
+library(kableExtra)
+library(tidyr)
+```
+
+## Preguntas  
+Después de haber concluido las exploración de las variables es momento de empezar a operar con preguntas directas para tener un mayor acercamiento a la base de datos.
+
+```{r, include=FALSE}
+movies <- read.csv("./movies.csv")
+```
+
+### 2. ¿Cuáles son las 10 películas que más ingresos tuvieron?  
+```{r echo=FALSE}
+top_moviesRevenue_df <- movies %>%
+  select(title, revenue) %>%
+  arrange(desc(revenue)) %>%
+  head(10)
+
+table_top_moviesRevenue_df <- kable(top_moviesRevenue_df,caption = "10 películas con mayores ingresos")
+
+table_top_moviesRevenue_df <- kable_styling(
+  table_top_moviesRevenue_df, full_width = FALSE, bootstrap_options = c("striped", "hover", "condesed", "responsive"))
+
+table_top_moviesRevenue_df
+```
+
+### ¿Cuál es la peor película de acuerdo a los votos de todos los usuarios?  
+No existe una sola película puntuada como la peor, ya que hay 30 películas que comparten la msima puntuación, aún tratando de filtrar por el promedio, la cantidad sigue siendo de 30. A continuación se listan las pelícualas encontradas:
+```{r echo=FALSE}
+
+worst_movie <- movies %>%
+  select(title, voteCount, voteAvg) %>%
+  arrange(voteCount, voteAvg) %>%
+  head(30)
+
+# Convertir títulos a UTF-8
+worst_movie$title <- iconv(worst_movie$title, from = "latin1", to = "UTF-8", sub = " ")
+
+# Filtrar valores NA en title
+worst_movie <- worst_movie %>% filter(!is.na(title))
+
+# Generar tabla correctamente
+table_worst_movie <- worst_movie %>%
+  kable(caption = "Top películas peor puntuadas") %>%
+  kable_styling(full_width = FALSE, bootstrap_options = c("striped", "hover", "condensed", "responsive"))
+
+table_worst_movie
+
+```
