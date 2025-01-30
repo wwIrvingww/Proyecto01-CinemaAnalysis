@@ -11,6 +11,7 @@ library(knitr)
 library(dplyr)
 library(kableExtra)
 library(tidyr)
+library(ggplot2)
 ```
 
 ## Preguntas  
@@ -35,7 +36,7 @@ table_top_moviesRevenue_df <- kable_styling(
 table_top_moviesRevenue_df
 ```
 
-### ¿Cuál es la peor película de acuerdo a los votos de todos los usuarios?  
+### 4.¿Cuál es la peor película de acuerdo a los votos de todos los usuarios?  
 No existe una sola película puntuada como la peor, ya que hay 30 películas que comparten la msima puntuación, aún tratando de filtrar por el promedio, la cantidad sigue siendo de 30. A continuación se listan las pelícualas encontradas:
 ```{r echo=FALSE}
 
@@ -44,17 +45,162 @@ worst_movie <- movies %>%
   arrange(voteCount, voteAvg) %>%
   head(30)
 
-# Convertir títulos a UTF-8
 worst_movie$title <- iconv(worst_movie$title, from = "latin1", to = "UTF-8", sub = " ")
 
-# Filtrar valores NA en title
-worst_movie <- worst_movie %>% filter(!is.na(title))
-
-# Generar tabla correctamente
 table_worst_movie <- worst_movie %>%
   kable(caption = "Top películas peor puntuadas") %>%
   kable_styling(full_width = FALSE, bootstrap_options = c("striped", "hover", "condensed", "responsive"))
 
 table_worst_movie
+
+```
+
+### 6.¿Cuál es el género principal de las 20 películas más recientes? 
+EA continuación se muestra el género principal de cada una de las 20 películas más recientes. Siendo **comedy** el más repetido con 6 incidencias.  
+```{r echo=FALSE}
+movies$title <- iconv(movies$title, from = "latin1", to = "UTF-8", sub = " ")
+movies$genres <- iconv(movies$genres, from = "latin1", to = "UTF-8", sub = " ")
+
+recent_movies <- movies %>%
+  select(title, genres, releaseDate) %>%
+  arrange(desc(releaseDate)) %>%
+  head(20)
+
+recent_movies <- recent_movies %>%
+  mutate(first_genre = sub("\\|.*", "", genres),
+         first_genre = trimws(first_genre)) %>%
+  filter(first_genre != "" & !is.na(first_genre)) %>%
+  select(title, first_genre)
+
+table_principal_genres <- recent_movies %>%
+  kable(caption = "Películas más recientes con su género principal") %>%
+  kable_styling(full_width = FALSE, bootstrap_options = c("striped", "hover", "condensed", "responsive"))
+
+table_principal_genres
+
+```
+### ¿Cuál es el género principal que predomina en el conjunto de datos? Represéntelo usando un gráfico.
+El género principal que predomina en todo el conjunto de datos es **drama**.
+```{r echo=FALSE}
+movies$title <- iconv(movies$title, from = "latin1", to = "UTF-8", sub = " ")
+movies$genres <- iconv(movies$genres, from = "latin1", to = "UTF-8", sub = " ")
+
+genre_counts <- movies %>%
+  mutate(first_genre = sub("\\|.*", "", genres),
+         first_genre = trimws(first_genre)) %>%
+  filter(first_genre != "" & !is.na(first_genre)) %>%
+  count(first_genre, sort = TRUE)
+
+ggplot(genre_counts, aes(x = reorder(first_genre, n), y = n)) +
+  geom_bar(stat = "identity", fill = "steelblue") +
+  coord_flip() +
+  labs(title = "Frecuencia de los géneros principales",
+       x = "Género",
+       y = "Número de películas") +
+  theme_minimal()
+
+```
+
+### 8.¿A qué género principal pertenecen las películas más largas?  
+Pertenecen a **drama**. NOTA: Se tomaron en cuenta únicamente las primeras 20 películas más largas.
+```{r echo=FALSE}
+movies$title <- iconv(movies$title, from = "latin1", to = "UTF-8", sub = " ")
+movies$genres <- iconv(movies$genres, from = "latin1", to = "UTF-8", sub = " ")
+
+longest_movies <- movies %>%
+  select(title, genres, runtime) %>%
+  arrange(desc(runtime)) %>%
+  head(20) %>%
+  mutate(first_genre = sub("\\|.*", "", genres),
+         first_genre = trimws(first_genre)) %>%
+  filter(first_genre != "" & !is.na(first_genre))
+
+genre_counts <- longest_movies %>%
+  group_by(first_genre) %>%
+  summarise(count = n()) %>%
+  arrange(desc(count))
+
+table_genre_counts <- genre_counts %>%
+  kable(caption = "Recuento de géneros y duración total en las películas más largas") %>%
+  kable_styling(full_width = FALSE, bootstrap_options = c("striped", "hover", "condensed", "responsive"))
+
+table_genre_counts
+```
+
+### ¿La cantidad de actores influye en los ingresos de las películas? ¿se han hecho películas con más actores en los últimos años?  
+Dada la gráfica de correlación, podemos concluir que la cantidad de actores no influye en los ingresos de las películas.  
+
+```{r echo=FALSE}
+ggplot(movies, aes(x = actorsAmount, y = revenue)) +
+  geom_point(alpha = 0.5, color = "blue") + 
+  geom_smooth(method = "lm", color = "red", se = TRUE) +
+  labs(title = "Correlación entre Cantidad de Actores e Ingresos",
+       x = "Cantidad de Actores",
+       y = "Ingresos Totales (en millones)") +
+  theme_minimal()
+
+```
+No hay una relación directa que demiuestre sí se han hecho películas con más actores en los últimos años, sí que han habido algunas películas con muchos actores, pero no existe una realación que pruebe que en los últimos años se hacen películas con más actores.
+```{r echo=FALSE}
+movies$releaseYear <- as.numeric(format(as.Date(movies$releaseDate), "%Y"))
+
+actors_trend <- movies %>%
+  filter(!is.na(releaseYear) & !is.na(actorsAmount)) %>%
+  group_by(releaseYear) %>%
+  summarise(avg_actors = mean(actorsAmount, na.rm = TRUE)) %>%
+  arrange(releaseYear)
+
+ggplot(actors_trend, aes(x = releaseYear, y = avg_actors)) +
+  geom_line(color = "blue", linewidth = 1) +
+  geom_point(color = "red") +
+  labs(title = "Tendencia en la Cantidad Promedio de Actores por Año",
+       x = "Año de Estreno",
+       y = "Cantidad Promedio de Actores") +
+  theme_minimal()
+
+```
+
+### 10. ¿Quiénes son los directores que hicieron las 20 películas mejor calificadas?
+```{r echo=FALSE}
+# Reparar la codificación de los nombres de directores y títulos
+movies$director <- iconv(movies$director, from = "latin1", to = "UTF-8", sub = "")
+movies$title <- iconv(movies$title, from = "latin1", to = "UTF-8", sub = "")
+
+# Filtrar y procesar los datos
+best_movies_directors <- movies %>%
+  filter(!is.na(director) & director != "" & !is.na(voteAvg)) %>%  # Filtrar datos válidos
+  mutate(director = gsub("\\|", ", ", director),  # Reemplazar "|" por ", " para mejor legibilidad
+         director = trimws(director)) %>%  # Eliminar espacios en blanco adicionales
+  select(director, voteAvg) %>%
+  arrange(desc(voteAvg)) %>%  # Ordenar por calificación promedio descendente
+  head(20)
+
+# Crear una tabla con kable y aplicarle estilo
+table_best_movies_directors <- kable(best_movies_directors, caption = 'Directores de las 20 películas mejor calificadas') %>%
+  kable_styling(full_width = FALSE, bootstrap_options = c("striped", "hover", "condensed", "responsive"))
+
+# Imprimir la tabla
+table_best_movies_directors
+```
+
+### 12. ¿Se asocian ciertos meses de lanzamiento con mejores ingresos?
+```{r echo=FALSE}
+library(dplyr)
+library(ggplot2)
+
+movies$releaseMonth <- format(as.Date(movies$releaseDate), "%B")
+
+movies$releaseMonth <- factor(format(movies$releaseDate, "%B"), levels = month.name)
+
+movies_filtered <- movies %>%
+  filter(!is.na(revenue) & !is.na(releaseMonth)) 
+
+if (n_distinct(movies_filtered$releaseMonth) < 2) {
+  print("No hay suficientes meses con datos para realizar el análisis.")
+} else {
+  lm_result <- lm(revenue ~ releaseMonth, data = movies_filtered)
+  print(summary(lm_result))
+}
+
 
 ```
