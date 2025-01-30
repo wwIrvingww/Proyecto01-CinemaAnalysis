@@ -10,6 +10,7 @@ knitr::opts_chunk$set(echo = TRUE)
 library(knitr)
 library(dplyr)
 library(kableExtra)
+library(tidyr)
 ```
 
 # Fase Exploratoria  
@@ -125,18 +126,18 @@ tf_video <- kable_styling(
 tf_video
 ```
 
+Los directores más frecuente: Steven Spielberg con 30 , Clint con Eastwood 28 y Ridley Scott	23
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
-frecuency_director <- movies$director
-frecuency_director <- frecuency_director[!is.na(frecuency_director) & frecuency_director != ""]
 
-frecuency_director <- iconv(frecuency_director, from = "", to = "UTF-8")
 
-tfrecuency_director <- table(frecuency_director)
-tfrecuency_director_df <- as.data.frame(tfrecuency_director)
+frecuency_director <- iconv(movies$director, from = "", to = "UTF-8", sub = "byte")
+frecuency_director <- trimws(frecuency_director)
+frecuency_director <- frecuency_director[frecuency_director != ""] 
 
-colnames(tfrecuency_director_df) <- c("Director", "Frecuencia")
-
-tfrecuency_director_df <- tfrecuency_director_df %>%
+tfrecuency_director_df <- data.frame(Director = frecuency_director) %>%
+  separate_rows(Director, sep = "\\|") %>%
+  mutate(Director = trimws(Director)) %>%
+  count(Director, name = "Frecuencia") %>%
   arrange(desc(Frecuencia)) %>%
   head(10)
 
@@ -151,6 +152,133 @@ tf_director <- kable_styling(
   bootstrap_options = c("striped", "hover", "condensed", "responsive")
 )
 
+# Mostrar la tabla
 tf_director
+
 ```
 
+
+
+Se observa que la productora con más películas es Warner Bros. Pictures con un total de 466, al cual le sigue Universal Pictures con 466 y en tercer lugar Columbia Pictures	con 347.
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+
+frecuency_productionCompany <- iconv(movies$productionCompany, from = "", to = "UTF-8", sub = "byte")
+frecuency_productionCompany <- trimws(frecuency_productionCompany) 
+frecuency_productionCompany <- frecuency_productionCompany[frecuency_productionCompany != ""]
+
+tfrecuency_productionCompany_df <- data.frame(ProductionCompany = frecuency_productionCompany) %>%
+  separate_rows(ProductionCompany, sep = "\\|") %>%
+  mutate(ProductionCompany = trimws(ProductionCompany)) %>%
+  count(ProductionCompany, name = "Frecuencia") %>%
+  arrange(desc(Frecuencia)) %>%
+  head(10)
+
+tf_productionCompany <- kable(
+  tfrecuency_productionCompany_df, 
+  caption = "Top 10 Compañías de Producción por Frecuencia"
+)
+
+tf_productionCompany <- kable_styling(
+  tf_productionCompany, 
+  full_width = FALSE, 
+  bootstrap_options = c("striped", "hover", "condensed", "responsive")
+)
+
+tf_productionCompany
+```
+
+
+El país con más compañías de producción es Estados Unidos, sobresaliendo con un total de 12675, Japón es el segundo con 12675 lo cual no es ni siquiera la mitad de Estados Unidos, Francia no se separa mucho de japón con 1478, Reino Unido es el cuarto con 1413 y en quinto lugar hay un salto, ya que Alemania tiene 511, casi la tercera parte del cuarto lugar.
+
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+
+frecuency_productionCompanyCountry <- iconv(movies$productionCompanyCountry, from = "", to = "UTF-8", sub = "byte")
+frecuency_productionCompanyCountry <- trimws(frecuency_productionCompanyCountry)
+frecuency_productionCompanyCountry <- frecuency_productionCompanyCountry[frecuency_productionCompanyCountry != "" & frecuency_productionCompanyCountry != " "]
+
+tfrecuency_productionCompanyCountry_df <- data.frame(ProductionCompanyCountry = frecuency_productionCompanyCountry) %>%
+  separate_rows(ProductionCompanyCountry, sep = "\\|") %>%
+  mutate(ProductionCompanyCountry = trimws(ProductionCompanyCountry)) %>%
+  filter(ProductionCompanyCountry != "") %>%
+  filter(ProductionCompanyCountry != " ") %>%
+  count(ProductionCompanyCountry, name = "Frecuencia") %>%
+  arrange(desc(Frecuencia)) %>%
+  head(10)
+
+tf_productionCompanyCountry <- kable(
+  tfrecuency_productionCompanyCountry_df, 
+  caption = "Top 10 Países de Compañías de Producción por Frecuencia"
+)
+
+tf_productionCompanyCountry <- kable_styling(
+  tf_productionCompanyCountry, 
+  full_width = FALSE, 
+  bootstrap_options = c("striped", "hover", "condensed", "responsive")
+)
+
+tf_productionCompanyCountry
+```
+
+
+Los países en los que más se llevan a cabo películas son Estados Unidos con un total de 6788, seeguido de Reino Unido con 1171 y Japón con 731.
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+
+frecuency_productionCountry <- iconv(movies$productionCountry, from = "", to = "UTF-8", sub = "byte")
+frecuency_productionCountry <- trimws(frecuency_productionCountry)
+frecuency_productionCountry <- frecuency_productionCountry[frecuency_productionCountry != "" & frecuency_productionCountry != " "]
+
+tfrecuency_productionCountry_df <- data.frame(ProductionCountry = frecuency_productionCountry) %>%
+  separate_rows(ProductionCountry, sep = "\\|") %>%
+  mutate(ProductionCountry = trimws(ProductionCountry)) %>%
+  filter(ProductionCountry != "") %>%
+  filter(ProductionCountry != " ") %>%
+  count(ProductionCountry, name = "Frecuencia") %>%
+  arrange(desc(Frecuencia)) %>%
+  head(10)
+
+tf_productionCountry <- kable(
+  tfrecuency_productionCountry_df, 
+  caption = "Top 10 Países de Producción por Frecuencia"
+)
+
+tf_productionCountry <- kable_styling(
+  tf_productionCountry, 
+  full_width = FALSE, 
+  bootstrap_options = c("striped", "hover", "condensed", "responsive")
+)
+
+tf_productionCountry
+```
+
+Existe un total de 480 películas animadas que en las que no participa ningún actor per se. Frank Welker es el actor que en más películas ha aprecido con 143 incidencias, seguido de Grey DeLisle con 97 y por muy poco Jeff Bennett con 91.
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+
+frecuency_actors <- iconv(movies$actors, from = "", to = "UTF-8", sub = "byte")
+frecuency_actors <- trimws(frecuency_actors)
+frecuency_actors <- frecuency_actors[frecuency_actors != "" & frecuency_actors != " "]
+
+tfrecuency_actors_df <- data.frame(Actor = frecuency_actors) %>%
+  separate_rows(Actor, sep = "\\|") %>%
+  mutate(Actor = trimws(Actor)) %>%
+  filter(Actor != "") %>%
+  filter(Actor != " ") %>%
+  count(Actor, name = "Frecuencia") %>%
+  arrange(desc(Frecuencia)) %>%
+  head(10)
+
+tf_actors <- kable(
+  tfrecuency_actors_df, 
+  caption = "Top 10 Actores por Frecuencia"
+)
+
+tf_actors <- kable_styling(
+  tf_actors, 
+  full_width = FALSE, 
+  bootstrap_options = c("striped", "hover", "condensed", "responsive")
+)
+
+tf_actors
+```
