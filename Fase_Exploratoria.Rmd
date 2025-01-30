@@ -16,7 +16,6 @@ library(kableExtra)
 En esta fase se hará un breve análisis de exploración del dataset en donde se conocerán datos generales, cómo el tipo de las varaibles, sus distribuciones o formas. Además se plantena preguntas superficiales para comenzar a familiarizarse con el dataset, cómo conocer las películas más vistas, actores, géneros más populares y otras características importantes para entender las variables.
 
 
-
 ```{r, include=FALSE}
 movies <- read.csv("./movies.csv")
 
@@ -26,10 +25,8 @@ movies <- read.csv("./movies.csv")
 summary(movies)
 ```
 
-
-
-## Variables
-
+## Variables  
+Tipo de cada una de las variables
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
 
 table_variables <- data.frame(
@@ -82,3 +79,78 @@ table <- column_spec(table, 2, width = "50%")
 table <- column_spec(table, 3, width = "20%")
 table
 ```
+
+## Tablas de frecuencia de Variables cualitativas  
+Los idiomas en los que más se producen películas son: inglés con un total de 7772, japonés con 644 y español en tercer lugar con 425.  
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+frecuency_originalLanguage <- movies$originalLanguage
+tfrecuency_originalLanguage <- table(frecuency_originalLanguage)
+tfrecuency_originalLanguage_df <- as.data.frame(tfrecuency_originalLanguage)
+
+colnames(tfrecuency_originalLanguage_df) <- c("Idioma", "Frecuencia")
+
+tf_originalLanguage <- kable(
+  tfrecuency_originalLanguage_df,
+  caption = ""
+)
+
+tf_originalLanguage <- kable_styling(
+  tf_originalLanguage,
+  full_width = FALSE,
+  bootstrap_options = c("striped", "hover", "condensed", "responsive")
+)
+
+tf_originalLanguage
+```
+
+Más del 90% de las películas no tienen un vídeo promocional, ya que apenas 84 películas sí cuentan con uno, mientras que 9430 no.
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+frecuency_video <- movies$video
+tfrecuency_video <- table(frecuency_video)
+tfrecuency_video_df <- as.data.frame(tfrecuency_video)
+
+colnames(tfrecuency_video_df) <- c("Video", "Frecuencia")
+
+tf_video <- kable(
+  tfrecuency_video_df, 
+  caption = ""
+)
+
+tf_video <- kable_styling(
+  tf_video, 
+  full_width = FALSE, 
+  bootstrap_options = c("striped", "hover", "condensed", "responsive")
+)
+
+tf_video
+```
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+frecuency_director <- movies$director
+frecuency_director <- frecuency_director[!is.na(frecuency_director) & frecuency_director != ""]
+
+frecuency_director <- iconv(frecuency_director, from = "", to = "UTF-8")
+
+tfrecuency_director <- table(frecuency_director)
+tfrecuency_director_df <- as.data.frame(tfrecuency_director)
+
+colnames(tfrecuency_director_df) <- c("Director", "Frecuencia")
+
+tfrecuency_director_df <- tfrecuency_director_df %>%
+  arrange(desc(Frecuencia)) %>%
+  head(10)
+
+tf_director <- kable(
+  tfrecuency_director_df, 
+  caption = "Top 10 Directores por Frecuencia"
+)
+
+tf_director <- kable_styling(
+  tf_director, 
+  full_width = FALSE, 
+  bootstrap_options = c("striped", "hover", "condensed", "responsive")
+)
+
+tf_director
+```
+
