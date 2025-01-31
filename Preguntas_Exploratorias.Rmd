@@ -12,6 +12,7 @@ library(dplyr)
 library(kableExtra)
 library(tidyr)
 library(ggplot2)
+library(lubridate)
 ```
 
 ## Preguntas  
@@ -36,8 +37,10 @@ table_top_moviesRevenue_df <- kable_styling(
 table_top_moviesRevenue_df
 ```
 
-### 4.¿Cuál es la peor película de acuerdo a los votos de todos los usuarios?  
-No existe una sola película puntuada como la peor, ya que hay 30 películas que comparten la msima puntuación, aún tratando de filtrar por el promedio, la cantidad sigue siendo de 30. A continuación se listan las pelícualas encontradas:
+### 4.¿Cuál es la peor película de acuerdo a los votos de todos los usuarios?
+
+No existe una sola película puntuada como la peor, ya que hay 30 películas que comparten la msima puntuación, aún tratando de filtrar por el promedio, la cantidad sigue siendo de 30. A continuación se listan las pelícualas encontradas.
+
 ```{r echo=FALSE}
 
 worst_movie <- movies %>%
@@ -140,7 +143,7 @@ ggplot(movies, aes(x = actorsAmount, y = revenue)) +
   theme_minimal()
 
 ```
-No hay una relación directa que demiuestre sí se han hecho películas con más actores en los últimos años, sí que han habido algunas películas con muchos actores, pero no existe una realación que pruebe que en los últimos años se hacen películas con más actores.
+No hay una relación directa que demiuestre sí se han hecho películas con más actores en los últimos años, sí que han habido algunas películas con muchos actores, pero no existe una realación que pruebe que en los últimos años se hacen películas con más actores.  
 ```{r echo=FALSE}
 movies$releaseYear <- as.numeric(format(as.Date(movies$releaseDate), "%Y"))
 
@@ -162,45 +165,82 @@ ggplot(actors_trend, aes(x = releaseYear, y = avg_actors)) +
 
 ### 10. ¿Quiénes son los directores que hicieron las 20 películas mejor calificadas?
 ```{r echo=FALSE}
-# Reparar la codificación de los nombres de directores y títulos
 movies$director <- iconv(movies$director, from = "latin1", to = "UTF-8", sub = "")
 movies$title <- iconv(movies$title, from = "latin1", to = "UTF-8", sub = "")
 
-# Filtrar y procesar los datos
 best_movies_directors <- movies %>%
-  filter(!is.na(director) & director != "" & !is.na(voteAvg)) %>%  # Filtrar datos válidos
-  mutate(director = gsub("\\|", ", ", director),  # Reemplazar "|" por ", " para mejor legibilidad
-         director = trimws(director)) %>%  # Eliminar espacios en blanco adicionales
+  filter(!is.na(director) & director != "" & !is.na(voteAvg)) %>%  
+  mutate(director = gsub("\\|", ", ", director),director = trimws(director)) %>%  
   select(director, voteAvg) %>%
-  arrange(desc(voteAvg)) %>%  # Ordenar por calificación promedio descendente
+  arrange(desc(voteAvg)) %>%
   head(20)
 
-# Crear una tabla con kable y aplicarle estilo
+
 table_best_movies_directors <- kable(best_movies_directors, caption = 'Directores de las 20 películas mejor calificadas') %>%
   kable_styling(full_width = FALSE, bootstrap_options = c("striped", "hover", "condensed", "responsive"))
 
-# Imprimir la tabla
 table_best_movies_directors
 ```
 
 ### 12. ¿Se asocian ciertos meses de lanzamiento con mejores ingresos?
+Al calcular el promedio de ingresos de las películas agrupadas por mes, podemos observar como las películas estrenadas en junio son la mejor recibidas, seguidas de mayo y julio, el próximo mes en que reciben nien a las películas es en diciembre.
 ```{r echo=FALSE}
-library(dplyr)
-library(ggplot2)
+month_amount <- movies %>%
+  mutate(releaseDate = dmy(releaseDate),  
+         releaseMonth = month(releaseDate, label = TRUE)) 
 
-movies$releaseMonth <- format(as.Date(movies$releaseDate), "%B")
+monthly_avg_revenue <- month_amount %>%
+  group_by(releaseMonth) %>%
+  summarise(avg_revenue = mean(revenue, na.rm = TRUE)) %>%
+  arrange(desc(avg_revenue))  
 
-movies$releaseMonth <- factor(format(movies$releaseDate, "%B"), levels = month.name)
 
-movies_filtered <- movies %>%
-  filter(!is.na(revenue) & !is.na(releaseMonth)) 
-
-if (n_distinct(movies_filtered$releaseMonth) < 2) {
-  print("No hay suficientes meses con datos para realizar el análisis.")
-} else {
-  lm_result <- lm(revenue ~ releaseMonth, data = movies_filtered)
-  print(summary(lm_result))
-}
+ggplot(monthly_avg_revenue, aes(x = releaseMonth, y = avg_revenue, fill = releaseMonth)) +
+  geom_col() +
+  labs(title = "Promedio de ingresos por mes de lanzamiento",
+       x = "Mes de lanzamiento",
+       y = "Ingreso promedio") +
+  theme_minimal()
 
 
 ```
+
+### 14.¿Cómo se correlacionan las calificaciones con el éxito comercial?
+Existe una relación significativa entre las calificaciones y sus ingresos, pero esta relación no es definitiva ya que el modelo solo aplica un 2% de los ingresos, lo que nos dice que existen otras factores que definen el éxito comercial.
+
+```{r echo=FALSE}
+modelo_lineal <- lm(revenue ~ voteAvg, data = movies)
+
+plot(modelo_lineal)
+```
+
+### 16. ¿Qué estrategias de marketing, como videos promocionales o páginas oficiales, generan mejores resultados?
+Se observa que tener una **página oficial** está fuertemente asociado con mayores ingresos de las películas mientras que los **videos promocionales** no tienen un impacto significativo. Es decir que las películas con una página oficial tienden a ganar más dinero mientras que la presencia de un video promocional no garantiza mayores ingresos.
+```{r echo=FALSE} 
+movies_clean <- movies %>%
+  mutate(video = ifelse(is.na(video), FALSE, video),  # Rellenar NA en 'video' con FALSE
+         has_homePage = ifelse(homePage == "False" | is.na(homePage), FALSE, TRUE)) %>% 
+  select(video, has_homePage, revenue) %>%
+  filter(!is.na(revenue) & revenue > 0)  # Filtrar valores cero o negativos en revenue
+
+ggplot(movies_clean, aes(x = factor(video), y = revenue)) +
+  geom_boxplot(fill = c("#F8766D", "#00BFC4")) +
+  scale_y_log10() +  # Escala logarítmica para visualizar mejor
+  labs(title = "Ingresos según presencia de video promocional",
+       x = "¿Tiene video promocional?", y = "Ingresos (log)") +
+  theme_minimal()
+
+ggplot(movies_clean, aes(x = factor(has_homePage), y = revenue)) +
+  geom_boxplot(fill = c("#F8766D", "#00BFC4")) +
+  scale_y_log10() +
+  labs(title = "Ingresos según presencia de página oficial",
+       x = "¿Tiene página oficial?", y = "Ingresos (log)") +
+  theme_minimal()
+
+modelo <- lm(log(revenue) ~ video + has_homePage, data = movies_clean)
+
+
+
+
+```
+
