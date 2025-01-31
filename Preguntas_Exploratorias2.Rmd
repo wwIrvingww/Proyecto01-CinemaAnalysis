@@ -161,7 +161,7 @@ ggplot(movies_filtered, aes(x = budget)) +
        y = "Frecuencia") +
   theme_minimal()
 
-# Histograma de Ingresos con bins dinamicos
+# Histograma de Ingresos
 ggplot(movies_filtered, aes(x = revenue)) +
   stat_bin(bins = 30, fill = "green", color = "black", alpha = 0.7) +  
   scale_x_log10() + 
@@ -170,4 +170,40 @@ ggplot(movies_filtered, aes(x = revenue)) +
        y = "Frecuencia") +
   theme_minimal()
 ```
+
 Como se puede observar, si hay una tendencia y relación clara entre el budget y el revenue. Aunque un budget alto no represente siempre un pexito, es claro que mientras mayor presupuesto tenga la película, más oportunidad de generar ganancias tiene. A medida que incremente el presupuesto también lo hacen las ganacias.
+
+### 13 ¿En qué meses se han visto los lanzamientos con mejores ingresos? ¿cuantas películas, en promedio, se han lanzado por mes?
+
+```{r echo=FALSE}
+movies$releaseDate <- as.Date(movies$releaseDate, format = "%d/%m/%Y")
+movies$releaseDate[is.na(movies$releaseDate)] <- NA  # Manejo de fechas nulas
+
+movies$releaseDate <- as.Date(movies$releaseDate, format = "%d/%m/%Y")
+
+movies$mes_texto <- format(movies$releaseDate, "%B")
+
+peli_ingreso_mes <- movies[order(-movies$revenue), c("mes_texto","revenue","title")]
+
+head(peli_ingreso_mes, 30)
+```
+```{r echo=FALSE}
+peliculas_por_mes <- movies %>%
+  group_by(mes_texto) %>%
+  summarise(cantidad_peliculas = n())  # pelis por mes
+
+# realmente creo que eel resultado es el mismo si hago 10000/12 peroooo no me di cuenta a tiempo.
+promedio_peliculas_mes <- mean(peliculas_por_mes$cantidad_peliculas)
+
+```
+
+El promedio de peliculas por mes en general es **`r promedio_peliculas_mes``**. A continuación se meustra como se distribuyen las peliculas en los meses del anio.
+
+```{r echo=FALSE}
+peliculas_por_mes
+```
+### 15 ¿Qué estrategias de marketing, como videos promocionales o páginas oficiales, generan mejores resultados?
+
+```{r echo=FALSE}
+dim(movies)
+```
