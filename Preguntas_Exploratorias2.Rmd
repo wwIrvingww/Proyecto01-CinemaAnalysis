@@ -206,4 +206,97 @@ peliculas_por_mes
 
 ```{r echo=FALSE}
 dim(movies)
+
 ```
+
+### EXtras
+
+### ¿Cuales son los 10 lenguajes originales mas comunes entre todas las peliculas?
+
+```{r echo=FALSE}
+peliculas_por_lenguaje <- movies %>%
+  group_by(originalLanguage) %>%
+  summarise(cantidad_len = n()) %>%
+  arrange(desc(cantidad_len))
+
+top10_lenguajes  <- head(peliculas_por_lenguaje, 10)
+
+top10_lenguajes
+
+ggplot(top10_lenguajes, aes(x = reorder(originalLanguage, -cantidad_len), y = cantidad_len)) +
+  geom_bar(stat = "identity", fill = "steelblue") +
+  labs(title = "Top 10 Lenguajes Originales Mas Comunes", 
+       x = "Lenguaje Original", 
+       y = "Cantidad de Películas") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+```
+
+### ¿Hay alguna correlación entre el largo de la película y su popularidad? Son populares las películas largas?
+
+```{r echo=FALSE}
+movies_largoxPopularidad <- movies[order(-movies$runtime), c("runtime", "popularity")]
+head(movies_largoxPopularidad, 20)
+
+ggplot(movies, aes(x = runtime, y = popularity)) +
+  geom_point(alpha = 0.5, color = "steelblue") +
+  geom_smooth(method = "lm", color = "red", se = FALSE) +  # 
+  labs(title = "Relacion entre la Duracion y la Popularidad de las Peliculas",
+       x = "Duracion (minutos)",
+       y = "Popularidad") +
+  theme_minimal()
+
+correlacion <- cor(movies$runtime, movies$popularity, use = "complete.obs")
+
+print(paste("El coeficiente de correlacion es:", round(correlacion, 2)))
+```
+Al final se puede observar que realmente no hay una alta correlación entre la duración de la película y su popularidad. Si una película es larga o corta no debería de influir en la popularidad de la película.
+
+El coeficiente de correlación entre la duracion de la pelicula y su popularidaa es **`r round(correlacion, 2)`**
+
+### ¿Las peliculas con mejor nota promedio tiene mejores ganancias?
+
+```{r echo=FALSE}
+movies_VoteAvgxGanancia <- movies[order(-movies$voteAvg), c("voteAvg", "revenue")]
+head(movies_VoteAvgxGanancia, 20)
+
+ggplot(movies, aes(x = voteAvg, y = revenue)) +
+  geom_point(alpha = 0.5, color = "steelblue") +
+  geom_smooth(method = "lm", color = "red", se = FALSE) +  
+  labs(title = "Relacion entre la Nota Promedio y los Ingresos de las Peliculas",
+       x = "Nota Promedio (voteAvg)",
+       y = "Ingresos (revenue)") +
+  theme_minimal()
+
+correlacion_VoteAvgxRevenue <- cor(movies$voteAvg, movies$revenue, use = "complete.obs")
+
+```
+El coeficiente de correlación entre la notay la ganancia es **`r round(correlacion_VoteAvgxRevenue, 2)`**. Se puede observar que realmente una buena nota no implica que las peliculas tengan altos rangos de ganancias. Los datos varían muchos, especialmente en el ranfo de 5.0 y 8. Se puede ver que las películas puden tener un rating similar pero algunas ganaron mucho mas que otras.
+
+Ahora bien podemos porbar colocando los ejes al reves de la siguiente forma
+
+```{r echo=FALSE}
+movies_filtradas <- subset(movies, revenue > 10000000)
+
+# Ordenar por revenue en orden descendente
+movies_gananciaxVoteAvg_filtradas <- movies_filtradas[order(-movies_filtradas$revenue), c("revenue", "voteAvg")]
+
+# Mostrar las primeras 20 filas
+head(movies_gananciaxVoteAvg_filtradas, 20)
+
+# Crear el diagrama de dispersión
+ggplot(movies_filtradas, aes(x = revenue, y = voteAvg)) +
+  geom_point(alpha = 0.5, color = "steelblue") +
+  geom_smooth(method = "lm", color = "red", se = FALSE) +  # Línea de tendencia
+  labs(title = "Relación entre los Ingresos y la Nota Promedio (Revenue > 10 millones)",
+       x = "Ingresos (revenue)",
+       y = "Nota Promedio (voteAvg)") +
+  theme_minimal()
+
+# Calcular el coeficiente de correlación
+correlacion_filtrada <- cor(movies_filtradas$revenue, movies_filtradas$voteAvg, use = "complete.obs")
+
+# Mostrar el resultado
+print(paste("El coeficiente de correlación (Revenue > 10 millones) es:", round(correlacion_filtrada, 2)))
+```
+
+El coeficiente de correlación entre los ingresos y la nota promedio es **`r round(correlacion_filtrada, 2)`**. Es importante mencionar que a pesar del coeficiente de correlacion, en la grafica si se puede observar una mejora en el rating a medida que aumenta la ganancia. Eso quiere decir que cuando el revenue es grande, por lo general tiene rating mayor. Pero también, hay una cantidad considerable de peliculas con revenue menor pero con muy buena nota promedio.
