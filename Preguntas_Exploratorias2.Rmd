@@ -4,12 +4,24 @@ author: "Irving, Chuy"
 date: "2025-01-31"
 output: html_document
 ---
-```{r, include=FALSE}
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(knitr)
+library(dplyr)
+library(kableExtra)
+library(tidyr)
+library(ggplot2)
+library(lubridate)
+```
+
+```{r include=FALSE}
 movies <- read.csv("./movies.csv")
 ```
 
 ### 1 ¿Cuáles son las 10 películas que contaron con más presupuesto?
-```{r, echo==FALSE}
+
+```{r echo=FALSE}
 columnas <- c("title", "budget")
 
 top10_peliculas_presupuesto <- movies[order(-movies$budget),columnas]
@@ -18,36 +30,48 @@ head(top10_peliculas_presupuesto, 10)
 ```
 
 ### 3 ¿Cuál es la película que más votos tuvo?
-```{r, echo==FALSE}
+
+```{r echo=FALSE}
+columnasVotos <- c("title", "voteCount")
+pelicula_mas_votada <- head(movies[order(-movies$voteCount), columnasVotos],1)
+
+pelicula_mas_votada
+
+titulo_Mas_Votado <- pelicula_mas_votada$title
+votos_mas_altos <- pelicula_mas_votada$voteCount
 
 ```
 
 ### 5 ¿Cuántas películas se hicieron en cada año? ¿En qué año se hicieron más películas? Usar un gráfico de barras
-```{r, echo==FALSE}
 
+```{r echo=FALSE}
+
+movies$releaseDate <- as.Date(movies$releaseDate, format = "%d/%m/%Y")
+
+movies$Anio <- year(movies$releaseDate)
+
+peliculas_por_anio <- movies %>%
+  group_by(Anio) %>%
+  summarise(Cantidad = n()) %>%
+  arrange(Anio)
+
+peliculas_por_anio_ord <- peliculas_por_anio[order(-peliculas_por_anio$Cantidad), ]
+
+anio_max <- peliculas_por_anio_ord$Anio[1]
+cantidad_max <- peliculas_por_anio_ord$Cantidad[1]
+
+peliculas_por_anio_ord
+
+ggplot(peliculas_por_anio_ord, aes(x = Anio, y = Cantidad)) +
+  geom_bar(stat = "identity", fill = "steelblue") +
+  labs(title = "Cantidad de Películas por Año", x = "Año", y = "Cantidad de Películas") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
 ```
+
+El año en el que se hicieron más películas fue **`r anio_max`**, con un total de **`r cantidad_max`** películas.
 
 ### 7 ¿Las películas de qué genero principal obtuvieron mayores ganancias?
-```{r, echo==FALSE}
 
-```
-
-### 9 ¿Es posible que la cantidad de hombres y mujeres en el reparto influya en la popularidad y los ingresos de las películas?
-```{r, echo==FALSE}
-
-```
-
-### 11 ¿Cómo se correlacionan los presupuestos con los ingresos? ¿Los altos presupuestos significan altos ingresos? Haga los gráficos que necesite, histograma, diagrama de dispersión
-```{r, echo==FALSE}}
-
-```
-
-### 13 ¿En qué meses se han visto los lanzamientos con mejores ingresos? ¿cuantas películas, en promedio, se han lanzado por mes?
-```{r, echo==FALSE}
-
-```
-
-### 15 ¿Qué estrategias de marketing, como videos promocionales o páginas oficiales, generan mejores resultados?
-```{r, echo==FALSE}
-
+```{r echo=FALSE}
+hello
 ```
