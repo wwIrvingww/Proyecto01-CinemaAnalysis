@@ -64,14 +64,73 @@ peliculas_por_anio_ord
 
 ggplot(peliculas_por_anio_ord, aes(x = Anio, y = Cantidad)) +
   geom_bar(stat = "identity", fill = "steelblue") +
-  labs(title = "Cantidad de Películas por Año", x = "Año", y = "Cantidad de Películas") +
+  labs(title = "Cantidad de Peliculas por Anio", x = "Anio", y = "Cantidad de Peliculas") +
   theme(axis.text.x = element_text(angle = 45, hjust = 1))
 ```
 
 El año en el que se hicieron más películas fue **`r anio_max`**, con un total de **`r cantidad_max`** películas.
 
 ### 7 ¿Las películas de qué genero principal obtuvieron mayores ganancias?
+Es importante mencionar que tomamos como género principal al primer género listado en la columna genres.
 
 ```{r echo=FALSE}
-hello
+movies <- movies %>%
+  mutate(genero_principal = ifelse(is.na(genres) | genres == "", 
+                                   "Desconocido", 
+                                   trimws(sub("\\|.*", "", genres))))
+
+# Agrupar por género principal y calcular ganancias
+ganancias_por_genero <- movies %>%
+  group_by(genero_principal) %>%
+  summarise(ganancias_totales = sum(revenue, na.rm = TRUE)) %>%
+  arrange(desc(ganancias_totales))
+
+ganancias_por_genero
+
+# Extraer el género con mayores ganancias
+genero_max_ganancias <- ganancias_por_genero$genero_principal[1]
+ganancias_max <- ganancias_por_genero$ganancias_totales[1]
+
+```
+El género con mayores ganancias es **`r genero_max_ganancias`**, con un total de **`r ganancias_max`** dólares.
+
+
+### 9 ¿Es posible que la cantidad de hombres y mujeres en el reparto influya en la popularidad y los ingresos de las películas?
+
+Para este análisis decidimos revisarlo de 2 formas distintas. Primero quicimos determinar si a medida que hay mayor porcentaje de hombres o mujeres la popularidad y revenue crece. Pero como se puede observar en las gráficaa, el hecho de tener muchos más hombres que mujeres, y viciversa, en una película no implica que haya una relación directa entre el porcentaje del género mayoritario para todos los casos.
+
+```{r echo=FALSE}
+suppressWarnings(movies$castMenAmount <- as.numeric(movies$castMenAmount))
+suppressWarnings(movies$castWomenAmount <- as.numeric(movies$castWomenAmount))
+
+movies <- movies %>%
+  mutate(castMenAmount = replace_na(castMenAmount, 0),
+         castWomenAmount = replace_na(castWomenAmount, 0),
+         totalCast = castMenAmount + castWomenAmount,
+         menRatio = ifelse(totalCast > 0, castMenAmount / totalCast, NA),
+         womenRatio = ifelse(totalCast > 0, castWomenAmount / totalCast, NA))
+
+col_reparto <- c("castMenAmount", "castWomenAmount", "menRatio", "womenRatio", "popularity", "revenue")
+
+pelis_cast_menRatio<- movies %>%
+  select(all_of(col_reparto)) %>%
+  arrange(desc(menRatio))
+
+head(pelis_cast_menRatio, 30)
+
+pelis_cast_womenRatio <- movies %>%
+  select(all_of(col_reparto)) %>%
+  arrange(desc(womenRatio))
+
+head(pelis_cast_womenRatio, 30)
+```
+
+Sin embargo, si ordenamos por popularidad las películas y observamos el porcentaje de genero del cast, se puede observar que en algunas de las películas populares en efecto hay un mayor porcentaje de hombres. Pero como tal el porcentaje de género no influye directamente en la popularidad y mucho menos en las ganancias según lo que se observa debajo. 
+```{r echo=FALSE}
+pelis_cast_popular <- movies %>%
+  select(all_of(col_reparto)) %>%
+  arrange(desc(popularity))
+
+head(pelis_cast_popular, 30)
+
 ```
