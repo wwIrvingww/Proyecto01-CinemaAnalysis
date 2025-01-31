@@ -11,10 +11,11 @@ library(knitr)
 library(dplyr)
 library(kableExtra)
 library(tidyr)
+library(ggplot2)
 ```
 
 # Fase Exploratoria  
-En esta fase se hará un breve análisis de exploración del dataset en donde se conocerán datos generales, cómo el tipo de las varaibles, sus distribuciones o formas. Además se plantena preguntas superficiales para comenzar a familiarizarse con el dataset, cómo conocer las películas más vistas, actores, géneros más populares y otras características importantes para entender las variables.
+En esta fase se hará un breve análisis de exploración del dataset en donde se conocerán datos generales, cómo el tipo de las varaibles, sus distribuciones o formas. Además se plantena preguntas superficiales para comenzar a familiarizarse con el dataset, cómo conocer las peliculas más vistas, actores, géneros más populares y otras características importantes para entender las variables.
 
 
 
@@ -26,87 +27,116 @@ movies <- read.csv("./movies.csv")
 
 | **Nombre de la Columna**         | **Descripción**                                                                 |
 |----------------------------------|---------------------------------------------------------------------------------|
-| `Id`                             | Id de la película.                                                              |
-| `Popularity`                     | Índice de popularidad de la película calculado semanalmente.                    |
-| `budget`                         | Presupuesto de la película.                                                     |
-| `revenue`                        | Ingresos de la película.                                                        |
-| `original_title`                 | Título original de la película (en su idioma original).                         |
-| `originalLanguage`               | Idioma original de la película.                                                 |
-| `title`                          | Título de la película traducido al inglés.                                      |
-| `homePage`                       | Página web de la película.                                                      |
-| `video`                          | Indica si la película tiene videos promocionales.                               |
-| `director`                       | Director de la película.                                                        |
-| `runtime`                        | Duración de la película.                                                        |
-| `genres`                         | Género(s) de la película.                                                       |
-| `genresAmount`                   | Cantidad de géneros que representan a la película.                              |
-| `productionCompany`              | Compañías productoras de la película.                                           |
-| `productionCoAmount`             | Cantidad de compañías productoras que participaron en la película.              |
-| `productionCompanyCountry`       | Países de las compañías productoras de la película.                             |
-| `productionCountry`              | Países donde se filmó la película.                                              |
-| `productionCountriesAmount`      | Cantidad de países donde se filmó la película.                                  |
-| `releaseDate`                    | Fecha de estreno de la película.                                                |
-| `voteCount`                      | Número de votos de la película en la plataforma.                                |
-| `voteAvg`                        | Promedio de votos de la película en la plataforma.                              |
-| `actors`                         | Actores que participan en la película.                                          |
-| `actorsPopularity`               | Índice de popularidad del elenco de la película.                                |
-| `actorsCharacter`                | Personaje que interpreta cada actor en la película.                             |
+| `Id`                             | Id de la pelicula.                                                              |
+| `Popularity`                     | Índice de popularidad de la pelicula calculado semanalmente.                    |
+| `budget`                         | Presupuesto de la pelicula.                                                     |
+| `revenue`                        | Ingresos de la pelicula.                                                        |
+| `original_title`                 | Título original de la pelicula (en su idioma original).                         |
+| `originalLanguage`               | Idioma original de la pelicula.                                                 |
+| `title`                          | Título de la pelicula traducido al inglés.                                      |
+| `homePage`                       | Página web de la pelicula.                                                      |
+| `video`                          | Indica si la pelicula tiene videos promocionales.                               |
+| `director`                       | Director de la pelicula.                                                        |
+| `runtime`                        | Duración de la pelicula.                                                        |
+| `genres`                         | Género(s) de la pelicula.                                                       |
+| `genresAmount`                   | Cantidad de géneros que representan a la pelicula.                              |
+| `productionCompany`              | companias productoras de la pelicula.                                           |
+| `productionCoAmount`             | Cantidad de companias productoras que participaron en la pelicula.              |
+| `productionCompanyCountry`       | Países de las companias productoras de la pelicula.                             |
+| `productionCountry`              | Países donde se filmó la pelicula.                                              |
+| `productionCountriesAmount`      | Cantidad de países donde se filmó la pelicula.                                  |
+| `releaseDate`                    | Fecha de estreno de la pelicula.                                                |
+| `voteCount`                      | Número de votos de la pelicula en la plataforma.                                |
+| `voteAvg`                        | Promedio de votos de la pelicula en la plataforma.                              |
+| `actors`                         | Actores que participan en la pelicula.                                          |
+| `actorsPopularity`               | Índice de popularidad del elenco de la pelicula.                                |
+| `actorsCharacter`                | Personaje que interpreta cada actor en la pelicula.                             |
 
 En total se tienen **`r dim(movies)[1]`** registros/peliculas y **`r dim(movies)[2]`** columnas. Cada columna tiene su descripcion en la tabla anterior.
 
 Ademas de esto tambien es importante tener en cuenta el formato que tienen algunas columnas, ya que no todas tienen un formato estandar que sea facil de leer o incluso algunas columnas tienen valores NA.
 
-Algunos formatos a tener en cuenta son en las columnas que tienen valores multiples como: genres, actors, actorsCharacter y productionCountry. Dichas columnas tienen la caractersitica que pueden tener 1 o mas valores separados por un pipe "|". Por ejemplo si tiene un genero la pelicula solo tendra "drama", pero si tiene mas de uno tendra "drama|action|terror".
+Algunos formatos a tener en cuenta son en las columnas que tienen valores multiples como: genres, actors, actorsCharacter director y productionCountry. Dichas columnas tienen la caractersitica que pueden tener 1 o mas valores separados por un pipe "|". Por ejemplo si tiene un genero la pelicula solo tendra "drama", pero si tiene mas de uno tendra "drama|action|terror". Y similar con las demas tablas con varios valores. Suponemos que el primer elemento representa el principal. 
 
+Por ultimo hay que tener ecuidad también con las oclumnas con tipo de dato cambiado. Con esto nos referimos por ejemplo a columnas que tengan numeros como strings por ejemplo.
 ```{r, include=FALSE}
 summary(movies)
 ```
 
 ## Variables  
-Tipo de cada una de las variables
+## ¿Las variables cuantitativas siguen una distribucion normal?
+
+A continuacion se muestra un analisis de las variables cuantitativas identificadas.
+
+```{r echo=FALSE}
+nombres_variables_numericas <- names(movies)[sapply(movies, is.numeric)]
+
+for (col in nombres_variables_numericas) {
+  rango <- range(movies[[col]], na.rm = TRUE)
+  binwidth <- (rango[2] - rango[1]) / 30  # Ajustar el número de bins
+  
+  print(
+    ggplot(movies, aes(x = .data[[col]])) +
+      geom_histogram(binwidth = binwidth, fill = "steelblue", color = "black") +
+      labs(title = paste("Histograma de", col),
+           x = col,
+           y = "Frecuencia") +
+      theme_minimal()
+  )
+}
+```
+
+Como se puede observar de todas las variables numericas, realmente la unica variable que sigue una distribucion normal casi simetrica, es el promedio de nota de las peliculas. No es completamente simetrica ya que se observa un ligero sesgo negativo (sesgo a la izquierda). Luego de eso casi todos los histogramas tienen una distribucion con sesgo positivo (a la derecha). 
+
+Segun probamos algunas consultas simples, esto puede estar ocurriendo por vaalores atipicos extremos. Por ejemplo en la cantidad de  actores "actorsAmount" hay peliculas donde hay miles. La pelicula con mas actores tuvo **`r max(movies$actorsAmount)`** por ejemplo. Hay algunas columnas que tienen una gran cantidad de datos atipicos.
+
+## Tipo de cada una de las variables. 
+
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
 
 table_variables <- data.frame(
-  Variable = c("Id", "popularity", "budget", "revenue", "original_title", 
-               "originalLanguage", "title", "homePage", "video", "director",
-               "runtime", "genres", "genresAmount", "productionCompany",
-               "productionCoAmount", "productionCompanyCountry", "productionCountry",
-               "productionCountriesAmount", "releaseDate", "voteCount",
-               "voteAvg", "actors", "actorsPopularity", "actorsCharacter",
-               "actorsAmount", "castWomenAmount", "castMenAmount"),
-  Description = c("Id de la película", "Índice de popularidad de la película calculado semanalmente", 
-                  "El presupuesto para la película.", "El ingreso de la película", 
-                  "El título original de la película, en su idioma original.", 
-                  "Idioma original en que se encuentra la película", 
-                  "El título de la película traducido al inglés", 
-                  "La página de inicio de la película", 
-                  "Si tiene videos promocionales o no", 
-                  "Director de la película",
-                  "La duración de la película", "El género de la película", 
-                  "Cantidad de géneros que representan la película", 
-                  "Las compañías productoras de la película", 
-                  "Cantidad de compañías productoras que participaron en la película", 
-                  "Países de las compañías productoras de la película", 
-                  "Países en los que se llevó a cabo la producción de la película",
-                  "Cantidad de países en los que se rodó la película",
-                  "Fecha de lanzamiento de la película",
-                  "El número de votos en la plataforma para la película.",
-                  "El promedio de los votos en la plataforma para la película",
-                  "Actores que participan en la película (Elenco)",
-                  "Índice de popularidad del elenco de la película.",
-                  "Personaje que interpreta cada actor en la película",
-                  "Cantidad de personas que actúan en la película",
-                  "Cantidad de actrices en el elenco de la película",
-                  "Cantidad de actores en el elenco de la película"),
-  Type = c("Cualitativa nominal", "Cuantitativa continua", "Cuantitativa discreta",
-           "Cuantitativa discreta", "Cualitativa nominal", "Cualitativa nominal", 
-           "Cualitativa nominal", "Cualitativa nominal", "Cualitativa nominal", 
-           "Cualitativa nominal", "Cuantitativa continua", "Cualitativa nominal", 
-           "Cuantitativa discreta", "Cualitativa nominal", "Cuantitativa discreta",
-           "Cualitativa nominal", "Cualitativa nominal", "Cuantitativa discreta", 
-           "Cuantitativa discreta", "Cuantitativa discreta", "Cuantitativa continua", 
-           "Cualitativa nominal", "Cuantitativa continua", "Cualitativa nominal", 
-           "Cuantitativa discreta", "Cuantitativa discreta", "Cuantitativa discreta")
+  Variable = iconv(c("Id", "popularity", "budget", "revenue", "original_title", 
+                     "originalLanguage", "title", "homePage", "video", "director",
+                     "runtime", "genres", "genresAmount", "productionCompany",
+                     "productionCoAmount", "productionCompanyCountry", "productionCountry",
+                     "productionCountriesAmount", "releaseDate", "voteCount",
+                     "voteAvg", "actors", "actorsPopularity", "actorsCharacter",
+                     "actorsAmount", "castWomenAmount", "castMenAmount"), to = "UTF-8"),
+  Description = iconv(c("Id de la pelicula", "Índice de popularidad de la pelicula calculado semanalmente", 
+                        "El presupuesto para la pelicula.", "El ingreso de la pelicula", 
+                        "El titulo original de la pelicula, en su idioma original.", 
+                        "Idioma original en que se encuentra la pelicula", 
+                        "El titulo de la pelicula traducido al ingles", 
+                        "La página de inicio de la pelicula", 
+                        "Si tiene videos promocionales o no", 
+                        "Director de la pelicula",
+                        "La duración de la pelicula", "El género de la pelicula", 
+                        "Cantidad de géneros que representan la pelicula", 
+                        "Las companias productoras de la pelicula", 
+                        "Cantidad de companias productoras que participaron en la pelicula", 
+                        "Países de las companias productoras de la pelicula", 
+                        "Países en los que se llevó a cabo la producción de la pelicula",
+                        "Cantidad de países en los que se rodó la pelicula",
+                        "Fecha de lanzamiento de la pelicula",
+                        "El número de votos en la plataforma para la pelicula.",
+                        "El promedio de los votos en la plataforma para la pelicula",
+                        "Actores que participan en la pelicula (Elenco)",
+                        "Índice de popularidad del elenco de la pelicula.",
+                        "Personaje que interpreta cada actor en la pelicula",
+                        "Cantidad de personas que actúan en la pelicula",
+                        "Cantidad de actrices en el elenco de la pelicula",
+                        "Cantidad de actores en el elenco de la pelicula"), to = "UTF-8"),
+  Type = iconv(c("Cualitativa nominal", "Cuantitativa continua", "Cuantitativa discreta",
+                 "Cuantitativa discreta", "Cualitativa nominal", "Cualitativa nominal", 
+                 "Cualitativa nominal", "Cualitativa nominal", "Cualitativa nominal", 
+                 "Cualitativa nominal", "Cuantitativa continua", "Cualitativa nominal", 
+                 "Cuantitativa discreta", "Cualitativa nominal", "Cuantitativa discreta",
+                 "Cualitativa nominal", "Cualitativa nominal", "Cuantitativa discreta", 
+                 "Cuantitativa discreta", "Cuantitativa discreta", "Cuantitativa continua", 
+                 "Cualitativa nominal", "Cuantitativa continua", "Cualitativa nominal", 
+                 "Cuantitativa discreta", "Cuantitativa discreta", "Cuantitativa discreta"), to = "UTF-8")
 )
+
 
 table <- kable(table_variables, format = "html", caption = "table de Variables de CineAnalysis")
 table <- kable_styling(table, bootstrap_options = c("striped", "hover", "condensed", "responsive"), full_width = FALSE)
@@ -115,11 +145,11 @@ table <- column_spec(table, 2, width = "50%")
 table <- column_spec(table, 3, width = "20%")
 table
 ```
-## ¿Las variables cuantitativas siguen una distribucion normal?
+
 
 
 ## Tablas de frecuencia de Variables cualitativas  
-Los idiomas en los que más se producen películas son: inglés con un total de 7772, japonés con 644 y español en tercer lugar con 425.  
+Los idiomas en los que más se producen peliculas son: inglés con un total de 7772, japonés con 644 y español en tercer lugar con 425.  
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
 frecuency_originalLanguage <- movies$originalLanguage
 tfrecuency_originalLanguage <- table(frecuency_originalLanguage)
@@ -141,7 +171,7 @@ tf_originalLanguage <- kable_styling(
 tf_originalLanguage
 ```
 
-Más del 90% de las películas no tienen un vídeo promocional, ya que apenas 84 películas sí cuentan con uno, mientras que 9430 no.
+Más del 90% de las peliculas no tienen un vídeo promocional, ya que apenas 84 peliculas sí cuentan con uno, mientras que 9430 no.
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
 frecuency_video <- movies$video
 tfrecuency_video <- table(frecuency_video)
@@ -196,7 +226,7 @@ tf_director
 
 
 
-Se observa que la productora con más películas es Warner Bros. Pictures con un total de 466, al cual le sigue Universal Pictures con 466 y en tercer lugar Columbia Pictures	con 347.
+Se observa que la productora con más peliculas es Warner Bros. Pictures con un total de 466, al cual le sigue Universal Pictures con 466 y en tercer lugar Columbia Pictures	con 347.
 
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
 
@@ -211,9 +241,15 @@ tfrecuency_productionCompany_df <- data.frame(ProductionCompany = frecuency_prod
   arrange(desc(Frecuencia)) %>%
   head(10)
 
+tfrecuency_productionCompany_df[] <- lapply(tfrecuency_productionCompany_df, function(x) {
+  if (is.character(x)) iconv(x, from = "", to = "UTF-8", sub = "") else x
+})
+
+caption_text1 <- iconv("Top 10 compañías de Producción por Frecuencia", from = "", to = "UTF-8", sub = "")
+
 tf_productionCompany <- kable(
   tfrecuency_productionCompany_df, 
-  caption = "Top 10 Compañías de Producción por Frecuencia"
+  caption = caption_text1
 )
 
 tf_productionCompany <- kable_styling(
@@ -226,7 +262,7 @@ tf_productionCompany
 ```
 
 
-El país con más compañías de producción es Estados Unidos, sobresaliendo con un total de 12675, Japón es el segundo con 12675 lo cual no es ni siquiera la mitad de Estados Unidos, Francia no se separa mucho de japón con 1478, Reino Unido es el cuarto con 1413 y en quinto lugar hay un salto, ya que Alemania tiene 511, casi la tercera parte del cuarto lugar.
+El país con más companias de producción es Estados Unidos, sobresaliendo con un total de 12675, Japón es el segundo con 12675 lo cual no es ni siquiera la mitad de Estados Unidos, Francia no se separa mucho de japón con 1478, Reino Unido es el cuarto con 1413 y en quinto lugar hay un salto, ya que Alemania tiene 511, casi la tercera parte del cuarto lugar.
 
 
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
@@ -244,9 +280,17 @@ tfrecuency_productionCompanyCountry_df <- data.frame(ProductionCompanyCountry = 
   arrange(desc(Frecuencia)) %>%
   head(10)
 
+tfrecuency_productionCompanyCountry_df[] <- lapply(tfrecuency_productionCompanyCountry_df, function(x) {
+  if (is.character(x)) iconv(x, from = "", to = "UTF-8", sub = "") else x
+})
+
+# Corregir el caption para evitar caracteres problemáticos
+caption_text2 <- iconv("Top 10 Países de compañías de Producción por Frecuencia", from = "", to = "UTF-8", sub = "")
+
+# Crear tabla con estilo
 tf_productionCompanyCountry <- kable(
   tfrecuency_productionCompanyCountry_df, 
-  caption = "Top 10 Países de Compañías de Producción por Frecuencia"
+  caption = caption_text2
 )
 
 tf_productionCompanyCountry <- kable_styling(
@@ -259,7 +303,7 @@ tf_productionCompanyCountry
 ```
 
 
-Los países en los que más se llevan a cabo películas son Estados Unidos con un total de 6788, seeguido de Reino Unido con 1171 y Japón con 731.
+Los países en los que más se llevan a cabo peliculas son Estados Unidos con un total de 6788, seeguido de Reino Unido con 1171 y Japón con 731.
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
 
 frecuency_productionCountry <- iconv(movies$productionCountry, from = "", to = "UTF-8", sub = "byte")
@@ -275,9 +319,17 @@ tfrecuency_productionCountry_df <- data.frame(ProductionCountry = frecuency_prod
   arrange(desc(Frecuencia)) %>%
   head(10)
 
+tfrecuency_productionCountry_df[] <- lapply(tfrecuency_productionCountry_df, function(x) {
+  if (is.character(x)) iconv(x, from = "", to = "UTF-8", sub = "") else x
+})
+
+# Corregir el caption para evitar caracteres problemáticos
+caption_text3 <- iconv("Top 10 Países de Producción por Frecuencia", from = "", to = "UTF-8", sub = "")
+
+# Crear tabla con estilo
 tf_productionCountry <- kable(
   tfrecuency_productionCountry_df, 
-  caption = "Top 10 Países de Producción por Frecuencia"
+  caption = caption_text3
 )
 
 tf_productionCountry <- kable_styling(
@@ -289,7 +341,7 @@ tf_productionCountry <- kable_styling(
 tf_productionCountry
 ```
 
-Existe un total de 480 películas animadas que en las que no participa ningún actor per se. Frank Welker es el actor que en más películas ha aprecido con 143 incidencias, seguido de Grey DeLisle con 97 y por muy poco Jeff Bennett con 91.
+Existe un total de 480 peliculas animadas que en las que no participa ningún actor per se. Frank Welker es el actor que en más peliculas ha aprecido con 143 incidencias, seguido de Grey DeLisle con 97 y por muy poco Jeff Bennett con 91.
 
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
 
