@@ -17,10 +17,45 @@ library(tidyr)
 En esta fase se hará un breve análisis de exploración del dataset en donde se conocerán datos generales, cómo el tipo de las varaibles, sus distribuciones o formas. Además se plantena preguntas superficiales para comenzar a familiarizarse con el dataset, cómo conocer las películas más vistas, actores, géneros más populares y otras características importantes para entender las variables.
 
 
+
 ```{r, include=FALSE}
 movies <- read.csv("./movies.csv")
 
 ```
+# Exploración rapida y resumen de los datos
+
+| **Nombre de la Columna**         | **Descripción**                                                                 |
+|----------------------------------|---------------------------------------------------------------------------------|
+| `Id`                             | Id de la película.                                                              |
+| `Popularity`                     | Índice de popularidad de la película calculado semanalmente.                    |
+| `budget`                         | Presupuesto de la película.                                                     |
+| `revenue`                        | Ingresos de la película.                                                        |
+| `original_title`                 | Título original de la película (en su idioma original).                         |
+| `originalLanguage`               | Idioma original de la película.                                                 |
+| `title`                          | Título de la película traducido al inglés.                                      |
+| `homePage`                       | Página web de la película.                                                      |
+| `video`                          | Indica si la película tiene videos promocionales.                               |
+| `director`                       | Director de la película.                                                        |
+| `runtime`                        | Duración de la película.                                                        |
+| `genres`                         | Género(s) de la película.                                                       |
+| `genresAmount`                   | Cantidad de géneros que representan a la película.                              |
+| `productionCompany`              | Compañías productoras de la película.                                           |
+| `productionCoAmount`             | Cantidad de compañías productoras que participaron en la película.              |
+| `productionCompanyCountry`       | Países de las compañías productoras de la película.                             |
+| `productionCountry`              | Países donde se filmó la película.                                              |
+| `productionCountriesAmount`      | Cantidad de países donde se filmó la película.                                  |
+| `releaseDate`                    | Fecha de estreno de la película.                                                |
+| `voteCount`                      | Número de votos de la película en la plataforma.                                |
+| `voteAvg`                        | Promedio de votos de la película en la plataforma.                              |
+| `actors`                         | Actores que participan en la película.                                          |
+| `actorsPopularity`               | Índice de popularidad del elenco de la película.                                |
+| `actorsCharacter`                | Personaje que interpreta cada actor en la película.                             |
+
+En total se tienen **`r dim(movies)[1]`** registros/peliculas y **`r dim(movies)[2]`** columnas. Cada columna tiene su descripcion en la tabla anterior.
+
+Ademas de esto tambien es importante tener en cuenta el formato que tienen algunas columnas, ya que no todas tienen un formato estandar que sea facil de leer o incluso algunas columnas tienen valores NA.
+
+Algunos formatos a tener en cuenta son en las columnas que tienen valores multiples como: genres, actors, actorsCharacter y productionCountry. Dichas columnas tienen la caractersitica que pueden tener 1 o mas valores separados por un pipe "|". Por ejemplo si tiene un genero la pelicula solo tendra "drama", pero si tiene mas de uno tendra "drama|action|terror".
 
 ```{r, include=FALSE}
 summary(movies)
@@ -80,6 +115,8 @@ table <- column_spec(table, 2, width = "50%")
 table <- column_spec(table, 3, width = "20%")
 table
 ```
+## ¿Las variables cuantitativas siguen una distribucion normal?
+
 
 ## Tablas de frecuencia de Variables cualitativas  
 Los idiomas en los que más se producen películas son: inglés con un total de 7772, japonés con 644 y español en tercer lugar con 425.  

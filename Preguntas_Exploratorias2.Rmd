@@ -207,7 +207,7 @@ El promedio de peliculas por mes en general es **\`r promedio_peliculas_mes\`\`*
 peliculas_por_mes
 ```
 
-### 16 ¿La popularidad del elenco está directamente correlacionada con el éxito de taquilla?
+### 15 ¿La popularidad del elenco está directamente correlacionada con el éxito de taquilla?
 
 ```{r echo=FALSE}
 
