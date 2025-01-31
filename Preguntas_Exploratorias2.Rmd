@@ -4,7 +4,50 @@ author: "Irving, Chuy"
 date: "2025-01-31"
 output: html_document
 ---
+```{r, include=FALSE}
+movies <- read.csv("./movies.csv")
 ```
-# Cargar el archivo CSV
-movies <- read.csv("movies.csv")
+
+### 1 ¿Cuáles son las 10 películas que contaron con más presupuesto?
+```{r, echo==FALSE}
+columnas <- c("title", "budget")
+
+top10_peliculas_presupuesto <- movies[order(-movies$budget),columnas]
+
+head(top10_peliculas_presupuesto, 10)
+```
+
+### 3 ¿Cuál es la película que más votos tuvo?
+```{r, echo==FALSE}
+
+```
+
+### 5 ¿Cuántas películas se hicieron en cada año? ¿En qué año se hicieron más películas? Usar un gráfico de barras
+```{r, echo==FALSE}
+
+```
+
+### 7 ¿Las películas de qué genero principal obtuvieron mayores ganancias?
+```{r, echo==FALSE}
+
+```
+
+### 9 ¿Es posible que la cantidad de hombres y mujeres en el reparto influya en la popularidad y los ingresos de las películas?
+```{r, echo==FALSE}
+
+```
+
+### 11 ¿Cómo se correlacionan los presupuestos con los ingresos? ¿Los altos presupuestos significan altos ingresos? Haga los gráficos que necesite, histograma, diagrama de dispersión
+```{r, echo==FALSE}}
+
+```
+
+### 13 ¿En qué meses se han visto los lanzamientos con mejores ingresos? ¿cuantas películas, en promedio, se han lanzado por mes?
+```{r, echo==FALSE}
+
+```
+
+### 15 ¿Qué estrategias de marketing, como videos promocionales o páginas oficiales, generan mejores resultados?
+```{r, echo==FALSE}
+
 ```
