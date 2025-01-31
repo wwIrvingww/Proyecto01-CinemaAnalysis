@@ -132,18 +132,19 @@ table_genre_counts
 
 ### ¿La cantidad de actores influye en los ingresos de las películas? ¿se han hecho películas con más actores en los últimos años?  
 Dada la gráfica de correlación, podemos concluir que la cantidad de actores no influye en los ingresos de las películas.  
+No hay una relación directa que demiuestre sí se han hecho películas con más actores en los últimos años, sí que han habido algunas películas con muchos actores, pero no existe una realación que pruebe que en los últimos años se hacen películas con más actores.  
 
 ```{r echo=FALSE}
 ggplot(movies, aes(x = actorsAmount, y = revenue)) +
   geom_point(alpha = 0.5, color = "blue") + 
-  geom_smooth(method = "lm", color = "red", se = TRUE) +
+  geom_smooth(method = "lm", color = "red", se = TRUE, show.legend = FALSE) +
   labs(title = "Correlación entre Cantidad de Actores e Ingresos",
        x = "Cantidad de Actores",
        y = "Ingresos Totales (en millones)") +
   theme_minimal()
 
 ```
-No hay una relación directa que demiuestre sí se han hecho películas con más actores en los últimos años, sí que han habido algunas películas con muchos actores, pero no existe una realación que pruebe que en los últimos años se hacen películas con más actores.  
+
 ```{r echo=FALSE}
 movies$releaseYear <- as.numeric(format(as.Date(movies$releaseDate), "%Y"))
 
@@ -239,8 +240,75 @@ ggplot(movies_clean, aes(x = factor(has_homePage), y = revenue)) +
 
 modelo <- lm(log(revenue) ~ video + has_homePage, data = movies_clean)
 
+```
 
+## Preguntas extras
+### ¿Existe relación entre el prespuesto de la película y sus ingresos?
+Los resultados indican una **relación positiva y moderadamente fuerte** entre el presupuesto de una película y sus ingresos. El **coeficiente de correlación de Pearson (0.757)** sugiere una asociación positiva considerable entre ambas variables. Además el **modelo de regresión lineal** muestra que en promedio por cada unidad adicional en el presupuesto los ingresos aumentan en **3.09 veces dicho valor**. Sin embargo, el **R² = 0.5737** indica que aproximadamente el **57.4% de la variabilidad en los ingresos** puede explicarse por el presupuesto, lo que sugiere que otros factores también influyen en el éxito de una película. En general el presupuesto es un buen predictor de los ingresos, pero no el único determinante del éxito financiero.
+
+```{r echo=FALSE}
+ggplot(movies, aes(x = budget, y = revenue)) +
+  geom_point(alpha = 0.5, color = "blue") + 
+  geom_smooth(method = "lm", color = "red", se = TRUE, show.legend = FALSE) +
+  labs(title = "Correlación entre Prespuesto e Ingresos",
+       x = "Presupuesto",
+       y = "Ingresos Totales (en millones)") +
+  theme_minimal()
+
+cor(movies$budget, movies$revenue, use = "complete.obs")  # Correlación de Pearson
+revenue_budget<- lm(revenue ~ budget, data = movies)
+summary(revenue_budget)  # Muestra R² y significancia
 
 
 ```
 
+### ¿Cuál era el índice promedio de popularidad de los actores de las 10 películas más taquilleras?
+```{r echo=FALSE}
+top_moviesRevenue_df <- movies %>%
+  select(title, actorsPopularity, revenue) %>%
+  arrange(desc(revenue)) %>%
+  head(10) %>%
+  mutate(avgpopularity = actorsPopularity %>%
+           strsplit("\\|") %>%
+           lapply(as.numeric) %>%
+           sapply(mean, na.rm = TRUE)) %>%
+  select(title, avgpopularity, revenue)
+
+table_top_moviesRevenue_df <- kable(top_moviesRevenue_df, caption = "10 películas             con mayores ingresos",  digits = 2) %>%  kable_styling(full_width = FALSE, bootstrap_options = c("striped", "hover", "condensed", "responsive"))
+
+table_top_moviesRevenue_df
+
+```
+
+### En todo el dataset, ¿la cantidad de actores y actrices es igual?
+No, el género que más abunda es el masculino.
+```{r echo=FALSE}
+library(ggplot2)
+library(dplyr)
+
+movies <- movies %>%
+  mutate(
+    castWomenAmount = as.numeric(castWomenAmount),
+    castMenAmount = as.numeric(castMenAmount)
+  )
+
+# Calcular las sumatorias de las columnas
+total_women <- sum(movies$castWomenAmount, na.rm = TRUE)
+total_men <- sum(movies$castMenAmount, na.rm = TRUE)
+
+# Crear un dataframe con los valores
+gender_totals <- data.frame(
+  Gender = c("Mujeres", "Hombres"),
+  Total = c(total_women, total_men)
+)
+
+# Graficar con ggplot2
+ggplot(gender_totals, aes(x = Gender, y = Total, fill = Gender)) +
+  geom_bar(stat = "identity", width = 0.5) +
+  labs(title = "Comparación de la Cantidad de Actores y Actrices en el Reparto",
+       x = "Género",
+       y = "Cantidad Total") +
+  scale_fill_manual(values = c("Mujeres" = "pink", "Hombres" = "blue")) +
+  theme_minimal()
+
+```
