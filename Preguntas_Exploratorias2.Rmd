@@ -201,7 +201,7 @@ promedio_peliculas_mes <- mean(peliculas_por_mes$cantidad_peliculas)
 
 ```
 
-El promedio de peliculas por mes en general es **\`r promedio_peliculas_mes\`\`**. A continuación se meustra como se distribuyen las peliculas en los meses del anio.
+El promedio de peliculas por mes en general es **`r promedio_peliculas_mes`**. A continuación se meustra como se distribuyen las peliculas en los meses del anio.
 
 ```{r echo=FALSE}
 peliculas_por_mes
@@ -226,14 +226,14 @@ library(ggplot2)
 ggplot(movies, aes(x = total_actors_popularity, y = revenue)) +
   geom_point(alpha = 0.5, color = "steelblue") +
   geom_smooth(method = "lm", color = "red", se = FALSE) +  # Línea de tendencia
-  labs(title = "Relación entre la Popularidad del Elenco y los Ingresos",
+  labs(title = "Relacion entre la Popularidad del Elenco y los Ingresos",
        x = "Popularidad Total del Elenco",
        y = "Ingresos (revenue)") +
   theme_minimal()
 
 ```
 
-Al final se tiene un coeficiente de **\`r correlacion_elencosss\`\`**. Lo cual indica que hay una correlacion entre la popularidad del elenco y las ganancias y exito en taquilla. Aunque no se tan alto si existen una relacion entre ambas variables.
+Al final se tiene un coeficiente de **`r correlacion_elencosss`**. Lo cual indica que hay una correlacion entre la popularidad del elenco y las ganancias y exito en taquilla. Aunque no se tan alto si existen una relacion entre ambas variables.
 
 ### EXtras
 
@@ -253,7 +253,7 @@ ggplot(top10_lenguajes, aes(x = reorder(originalLanguage, -cantidad_len), y = ca
   geom_bar(stat = "identity", fill = "steelblue") +
   labs(title = "Top 10 Lenguajes Originales Mas Comunes", 
        x = "Lenguaje Original", 
-       y = "Cantidad de Películas") +
+       y = "Cantidad de Peliculas") +
   theme(axis.text.x = element_text(angle = 45, hjust = 1))
 ```
 
