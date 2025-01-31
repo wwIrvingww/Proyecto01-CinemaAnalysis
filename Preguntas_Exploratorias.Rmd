@@ -29,7 +29,7 @@ top_moviesRevenue_df <- movies %>%
   arrange(desc(revenue)) %>%
   head(10)
 
-table_top_moviesRevenue_df <- kable(top_moviesRevenue_df,caption = "10 películas con mayores ingresos")
+table_top_moviesRevenue_df <- kable(top_moviesRevenue_df,caption = "10 peliculas con mayores ingresos")
 
 table_top_moviesRevenue_df <- kable_styling(
   table_top_moviesRevenue_df, full_width = FALSE, bootstrap_options = c("striped", "hover", "condesed", "responsive"))
@@ -51,7 +51,7 @@ worst_movie <- movies %>%
 worst_movie$title <- iconv(worst_movie$title, from = "latin1", to = "UTF-8", sub = " ")
 
 table_worst_movie <- worst_movie %>%
-  kable(caption = "Top películas peor puntuadas") %>%
+  kable(caption = "Top peliculas peor puntuadas") %>%
   kable_styling(full_width = FALSE, bootstrap_options = c("striped", "hover", "condensed", "responsive"))
 
 table_worst_movie
@@ -76,7 +76,7 @@ recent_movies <- recent_movies %>%
   select(title, first_genre)
 
 table_principal_genres <- recent_movies %>%
-  kable(caption = "Películas más recientes con su género principal") %>%
+  kable(caption = "Peliculas mas recientes con su genero principal") %>%
   kable_styling(full_width = FALSE, bootstrap_options = c("striped", "hover", "condensed", "responsive"))
 
 table_principal_genres
@@ -97,9 +97,9 @@ genre_counts <- movies %>%
 ggplot(genre_counts, aes(x = reorder(first_genre, n), y = n)) +
   geom_bar(stat = "identity", fill = "steelblue") +
   coord_flip() +
-  labs(title = "Frecuencia de los géneros principales",
-       x = "Género",
-       y = "Número de películas") +
+  labs(title = "Frecuencia de los generos principales",
+       x = "Genero",
+       y = "Numero de peliculas") +
   theme_minimal()
 
 ```
@@ -124,7 +124,7 @@ genre_counts <- longest_movies %>%
   arrange(desc(count))
 
 table_genre_counts <- genre_counts %>%
-  kable(caption = "Recuento de géneros y duración total en las películas más largas") %>%
+  kable(caption = "Recuento de generos y duracion total en las peliculas mas largas") %>%
   kable_styling(full_width = FALSE, bootstrap_options = c("striped", "hover", "condensed", "responsive"))
 
 table_genre_counts
@@ -137,12 +137,13 @@ Dada la gráfica de correlación, podemos concluir que la cantidad de actores no
 ggplot(movies, aes(x = actorsAmount, y = revenue)) +
   geom_point(alpha = 0.5, color = "blue") + 
   geom_smooth(method = "lm", color = "red", se = TRUE) +
-  labs(title = "Correlación entre Cantidad de Actores e Ingresos",
+  labs(title = "Correlacion entre Cantidad de Actores e Ingresos",
        x = "Cantidad de Actores",
        y = "Ingresos Totales (en millones)") +
   theme_minimal()
 
 ```
+
 No hay una relación directa que demiuestre sí se han hecho películas con más actores en los últimos años, sí que han habido algunas películas con muchos actores, pero no existe una realación que pruebe que en los últimos años se hacen películas con más actores.  
 ```{r echo=FALSE}
 movies$releaseYear <- as.numeric(format(as.Date(movies$releaseDate), "%Y"))
@@ -156,8 +157,8 @@ actors_trend <- movies %>%
 ggplot(actors_trend, aes(x = releaseYear, y = avg_actors)) +
   geom_line(color = "blue", linewidth = 1) +
   geom_point(color = "red") +
-  labs(title = "Tendencia en la Cantidad Promedio de Actores por Año",
-       x = "Año de Estreno",
+  labs(title = "Tendencia en la Cantidad Promedio de Actores por Anio",
+       x = "Anio de Estreno",
        y = "Cantidad Promedio de Actores") +
   theme_minimal()
 
@@ -176,7 +177,7 @@ best_movies_directors <- movies %>%
   head(20)
 
 
-table_best_movies_directors <- kable(best_movies_directors, caption = 'Directores de las 20 películas mejor calificadas') %>%
+table_best_movies_directors <- kable(best_movies_directors, caption = 'Directores de las 20 peliculas mejor calificadas') %>%
   kable_styling(full_width = FALSE, bootstrap_options = c("striped", "hover", "condensed", "responsive"))
 
 table_best_movies_directors
