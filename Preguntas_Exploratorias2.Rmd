@@ -134,3 +134,40 @@ pelis_cast_popular <- movies %>%
 head(pelis_cast_popular, 30)
 
 ```
+
+### 11 ¿Cómo se correlacionan los presupuestos con los ingresos? ¿Los altos presupuestos significan altos ingresos? Haga los gráficos que necesite, histograma, diagrama de dispersión
+
+```{r echo=FALSE}
+movies_clean <- movies %>%
+  filter(budget > 0, revenue > 0)  
+
+ggplot(movies_clean, aes(x = budget, y = revenue)) +
+  geom_point(alpha = 0.5, color = "blue") + 
+  geom_smooth(method = "lm", color = "red", se = FALSE) + 
+  scale_x_log10() + scale_y_log10() +  
+  labs(title = "Relacion entre Presupuesto e Ingresos",
+       x = "Presupuesto (budget)",
+       y = "Ingresos (revenue)") +
+  theme_minimal()
+
+movies_filtered <- movies_clean %>%
+  filter(budget > 0, revenue > 0)
+
+ggplot(movies_filtered, aes(x = budget)) +
+  stat_bin(bins = 30, fill = "blue", color = "black", alpha = 0.7) +  # `bins` en lugar de `binwidth`
+  scale_x_log10() +  
+  labs(title = "Distribucion de Presupuestos de Peliculas",
+       x = "Presupuesto (log)",
+       y = "Frecuencia") +
+  theme_minimal()
+
+# Histograma de Ingresos con bins dinamicos
+ggplot(movies_filtered, aes(x = revenue)) +
+  stat_bin(bins = 30, fill = "green", color = "black", alpha = 0.7) +  
+  scale_x_log10() + 
+  labs(title = "Distribucion de Ingresos de Peliculas",
+       x = "Ingresos (log)",
+       y = "Frecuencia") +
+  theme_minimal()
+```
+Como se puede observar, si hay una tendencia y relación clara entre el budget y el revenue. Aunque un budget alto no represente siempre un pexito, es claro que mientras mayor presupuesto tenga la película, más oportunidad de generar ganancias tiene. A medida que incremente el presupuesto también lo hacen las ganacias.
