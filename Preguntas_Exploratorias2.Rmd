@@ -7,6 +7,7 @@ output: html_document
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
+library(stringr)
 library(knitr)
 library(dplyr)
 library(kableExtra)
@@ -68,9 +69,10 @@ ggplot(peliculas_por_anio_ord, aes(x = Anio, y = Cantidad)) +
   theme(axis.text.x = element_text(angle = 45, hjust = 1))
 ```
 
-El año en el que se hicieron más películas fue **`r anio_max`**, con un total de **`r cantidad_max`** películas.
+El año en el que se hicieron más películas fue **`r anio_max`**, con un total de **`r cantidad_max`** peliculas.
 
 ### 7 ¿Las películas de qué genero principal obtuvieron mayores ganancias?
+
 Es importante mencionar que tomamos como género principal al primer género listado en la columna genres.
 
 ```{r echo=FALSE}
@@ -92,8 +94,8 @@ genero_max_ganancias <- ganancias_por_genero$genero_principal[1]
 ganancias_max <- ganancias_por_genero$ganancias_totales[1]
 
 ```
-El género con mayores ganancias es **`r genero_max_ganancias`**, con un total de **`r ganancias_max`** dólares.
 
+El genero con mayores ganancias es **`r genero_max_ganancias`**, con un total de **`r ganancias_max`** dólares.
 
 ### 9 ¿Es posible que la cantidad de hombres y mujeres en el reparto influya en la popularidad y los ingresos de las películas?
 
@@ -125,7 +127,8 @@ pelis_cast_womenRatio <- movies %>%
 head(pelis_cast_womenRatio, 30)
 ```
 
-Sin embargo, si ordenamos por popularidad las películas y observamos el porcentaje de genero del cast, se puede observar que en algunas de las películas populares en efecto hay un mayor porcentaje de hombres. Pero como tal el porcentaje de género no influye directamente en la popularidad y mucho menos en las ganancias según lo que se observa debajo. 
+Sin embargo, si ordenamos por popularidad las películas y observamos el porcentaje de genero del cast, se puede observar que en algunas de las películas populares en efecto hay un mayor porcentaje de hombres. Pero como tal el porcentaje de género no influye directamente en la popularidad y mucho menos en las ganancias según lo que se observa debajo.
+
 ```{r echo=FALSE}
 pelis_cast_popular <- movies %>%
   select(all_of(col_reparto)) %>%
@@ -187,6 +190,7 @@ peli_ingreso_mes <- movies[order(-movies$revenue), c("mes_texto","revenue","titl
 
 head(peli_ingreso_mes, 30)
 ```
+
 ```{r echo=FALSE}
 peliculas_por_mes <- movies %>%
   group_by(mes_texto) %>%
@@ -197,17 +201,39 @@ promedio_peliculas_mes <- mean(peliculas_por_mes$cantidad_peliculas)
 
 ```
 
-El promedio de peliculas por mes en general es **`r promedio_peliculas_mes``**. A continuación se meustra como se distribuyen las peliculas en los meses del anio.
+El promedio de peliculas por mes en general es **\`r promedio_peliculas_mes\`\`**. A continuación se meustra como se distribuyen las peliculas en los meses del anio.
 
 ```{r echo=FALSE}
 peliculas_por_mes
 ```
-### 15 ¿Qué estrategias de marketing, como videos promocionales o páginas oficiales, generan mejores resultados?
+
+### 16 ¿La popularidad del elenco está directamente correlacionada con el éxito de taquilla?
 
 ```{r echo=FALSE}
-dim(movies)
+
+
+# Dividir la columna actorsPopularity en una lista de vectores
+suppressWarnings(movies$actorsPopularity_split <- str_split(movies$actorsPopularity, "\\|"))
+
+# Calcular la popularidad total del elenco para cada película
+suppressWarnings(movies$total_actors_popularity <- sapply(movies$actorsPopularity_split, function(x) {
+  sum(as.numeric(x), na.rm = TRUE)  
+}))
+
+correlacion_elencosss <- cor(movies$total_actors_popularity, movies$revenue, use = "complete.obs")
+
+library(ggplot2)
+ggplot(movies, aes(x = total_actors_popularity, y = revenue)) +
+  geom_point(alpha = 0.5, color = "steelblue") +
+  geom_smooth(method = "lm", color = "red", se = FALSE) +  # Línea de tendencia
+  labs(title = "Relación entre la Popularidad del Elenco y los Ingresos",
+       x = "Popularidad Total del Elenco",
+       y = "Ingresos (revenue)") +
+  theme_minimal()
 
 ```
+
+Al final se tiene un coeficiente de **\`r correlacion_elencosss\`\`**. Lo cual indica que hay una correlacion entre la popularidad del elenco y las ganancias y exito en taquilla. Aunque no se tan alto si existen una relacion entre ambas variables.
 
 ### EXtras
 
@@ -231,7 +257,7 @@ ggplot(top10_lenguajes, aes(x = reorder(originalLanguage, -cantidad_len), y = ca
   theme(axis.text.x = element_text(angle = 45, hjust = 1))
 ```
 
-### ¿Hay alguna correlación entre el largo de la película y su popularidad? Son populares las películas largas?
+### ¿Hay alguna correlación entre el largo de la pelicula y su popularidad? Son populares las peliculas largas?
 
 ```{r echo=FALSE}
 movies_largoxPopularidad <- movies[order(-movies$runtime), c("runtime", "popularity")]
@@ -245,58 +271,35 @@ ggplot(movies, aes(x = runtime, y = popularity)) +
        y = "Popularidad") +
   theme_minimal()
 
-correlacion <- cor(movies$runtime, movies$popularity, use = "complete.obs")
+correlacion_time <- cor(movies$runtime, movies$popularity, use = "complete.obs")
 
-print(paste("El coeficiente de correlacion es:", round(correlacion, 2)))
+print(paste("El coeficiente de correlacion es:", round(correlacion_time, 2)))
 ```
+
 Al final se puede observar que realmente no hay una alta correlación entre la duración de la película y su popularidad. Si una película es larga o corta no debería de influir en la popularidad de la película.
 
-El coeficiente de correlación entre la duracion de la pelicula y su popularidaa es **`r round(correlacion, 2)`**
+El coeficiente de correlación entre la duracion de la pelicula y su popularidaa es **`r round(correlacion_time, 2)`**
 
-### ¿Las peliculas con mejor nota promedio tiene mejores ganancias?
-
-```{r echo=FALSE}
-movies_VoteAvgxGanancia <- movies[order(-movies$voteAvg), c("voteAvg", "revenue")]
-head(movies_VoteAvgxGanancia, 20)
-
-ggplot(movies, aes(x = voteAvg, y = revenue)) +
-  geom_point(alpha = 0.5, color = "steelblue") +
-  geom_smooth(method = "lm", color = "red", se = FALSE) +  
-  labs(title = "Relacion entre la Nota Promedio y los Ingresos de las Peliculas",
-       x = "Nota Promedio (voteAvg)",
-       y = "Ingresos (revenue)") +
-  theme_minimal()
-
-correlacion_VoteAvgxRevenue <- cor(movies$voteAvg, movies$revenue, use = "complete.obs")
-
-```
-El coeficiente de correlación entre la notay la ganancia es **`r round(correlacion_VoteAvgxRevenue, 2)`**. Se puede observar que realmente una buena nota no implica que las peliculas tengan altos rangos de ganancias. Los datos varían muchos, especialmente en el ranfo de 5.0 y 8. Se puede ver que las películas puden tener un rating similar pero algunas ganaron mucho mas que otras.
-
-Ahora bien podemos porbar colocando los ejes al reves de la siguiente forma
+### ¿Las peliculas con meyor budget tienen mejores notas promedio?
 
 ```{r echo=FALSE}
-movies_filtradas <- subset(movies, revenue > 10000000)
+movies_VoteAvgxBudget <- movies[order(-movies$budget), c("voteAvg", "budget")]
 
-# Ordenar por revenue en orden descendente
-movies_gananciaxVoteAvg_filtradas <- movies_filtradas[order(-movies_filtradas$revenue), c("revenue", "voteAvg")]
+head(movies_VoteAvgxBudget, 20)
 
-# Mostrar las primeras 20 filas
-head(movies_gananciaxVoteAvg_filtradas, 20)
-
-# Crear el diagrama de dispersión
-ggplot(movies_filtradas, aes(x = revenue, y = voteAvg)) +
+library(ggplot2)
+ggplot(movies, aes(x = budget, y = voteAvg)) +
   geom_point(alpha = 0.5, color = "steelblue") +
-  geom_smooth(method = "lm", color = "red", se = FALSE) +  # Línea de tendencia
-  labs(title = "Relación entre los Ingresos y la Nota Promedio (Revenue > 10 millones)",
-       x = "Ingresos (revenue)",
+  geom_smooth(method = "lm", color = "red", se = FALSE) + 
+  labs(title = "Relacion entre el Presupuesto y la Nota Promedio de las Peliculas",
+       x = "Presupuesto (budget)",
        y = "Nota Promedio (voteAvg)") +
   theme_minimal()
 
-# Calcular el coeficiente de correlación
-correlacion_filtrada <- cor(movies_filtradas$revenue, movies_filtradas$voteAvg, use = "complete.obs")
+# correl
+correlacion_budgetXvotes <- cor(movies$budget, movies$voteAvg, use = "complete.obs")
 
-# Mostrar el resultado
-print(paste("El coeficiente de correlación (Revenue > 10 millones) es:", round(correlacion_filtrada, 2)))
+
 ```
 
-El coeficiente de correlación entre los ingresos y la nota promedio es **`r round(correlacion_filtrada, 2)`**. Es importante mencionar que a pesar del coeficiente de correlacion, en la grafica si se puede observar una mejora en el rating a medida que aumenta la ganancia. Eso quiere decir que cuando el revenue es grande, por lo general tiene rating mayor. Pero también, hay una cantidad considerable de peliculas con revenue menor pero con muy buena nota promedio.
+Se obtuvo un coeficiente de **`r round(correlacion_budgetXvotes, 2)`**. Lo cual indica que el presupuesto de una pelicula no influye para nada en la nota promedio de la pelicula. un buen budget no implica buenas criticas.
