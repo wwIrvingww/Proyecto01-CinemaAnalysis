@@ -2,7 +2,9 @@
 title: "Preguntas_exploratorias2"
 author: "Irving, Chuy"
 date: "2025-01-31"
-output: html_document
+output:
+  pdf_document: default
+  html_document: default
 ---
 
 ```{r setup, include=FALSE}
@@ -235,7 +237,7 @@ ggplot(movies, aes(x = total_actors_popularity, y = revenue)) +
 
 Al final se tiene un coeficiente de **`r correlacion_elencosss`**. Lo cual indica que hay una correlacion entre la popularidad del elenco y las ganancias y exito en taquilla. Aunque no se tan alto si existen una relacion entre ambas variables.
 
-### EXtras
+### Extras
 
 ### ¿Cuales son los 10 lenguajes originales mas comunes entre todas las peliculas?
 

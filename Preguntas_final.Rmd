@@ -1,12 +1,15 @@
 ---
-title: "Preguntas_Exploratorias"
+title: "Preguntas_final"
 author: "Irving, Chuy"
-date: "2025-01-30"
-output: html_document
+date: "2025-01-31"
+output:
+  html_document:
+    df_print: paged 
 ---
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
+library(stringr)
 library(knitr)
 library(dplyr)
 library(kableExtra)
@@ -22,6 +25,15 @@ Después de haber concluido las exploración de las variables es momento de empe
 movies <- read.csv("./movies.csv")
 ```
 
+### 1 ¿Cuáles son las 10 películas que contaron con más presupuesto?
+```{r echo=FALSE}
+columnas <- c("title", "budget")
+
+top10_peliculas_presupuesto <- movies[order(-movies$budget),columnas]
+
+head(top10_peliculas_presupuesto, 10)
+```
+
 ### 2. ¿Cuáles son las 10 películas que más ingresos tuvieron?  
 ```{r echo=FALSE}
 top_moviesRevenue_df <- movies %>%
@@ -35,6 +47,18 @@ table_top_moviesRevenue_df <- kable_styling(
   table_top_moviesRevenue_df, full_width = FALSE, bootstrap_options = c("striped", "hover", "condesed", "responsive"))
 
 table_top_moviesRevenue_df
+```
+
+### 3 ¿Cuál es la película que más votos tuvo?
+```{r echo=FALSE}
+columnasVotos <- c("title", "voteCount")
+pelicula_mas_votada <- head(movies[order(-movies$voteCount), columnasVotos],1)
+
+pelicula_mas_votada
+
+titulo_Mas_Votado <- pelicula_mas_votada$title
+votos_mas_altos <- pelicula_mas_votada$voteCount
+
 ```
 
 ### 4.¿Cuál es la peor película de acuerdo a los votos de todos los usuarios?
@@ -57,6 +81,34 @@ table_worst_movie <- worst_movie %>%
 table_worst_movie
 
 ```
+
+### 5 ¿Cuántas películas se hicieron en cada año? ¿En qué año se hicieron más películas? Usar un gráfico de barras
+
+```{r echo=FALSE}
+
+movies$releaseDate <- as.Date(movies$releaseDate, format = "%d/%m/%Y")
+
+movies$Anio <- year(movies$releaseDate)
+
+peliculas_por_anio <- movies %>%
+  group_by(Anio) %>%
+  summarise(Cantidad = n()) %>%
+  arrange(Anio)
+
+peliculas_por_anio_ord <- peliculas_por_anio[order(-peliculas_por_anio$Cantidad), ]
+
+anio_max <- peliculas_por_anio_ord$Anio[1]
+cantidad_max <- peliculas_por_anio_ord$Cantidad[1]
+
+peliculas_por_anio_ord
+
+ggplot(peliculas_por_anio_ord, aes(x = Anio, y = Cantidad)) +
+  geom_bar(stat = "identity", fill = "steelblue") +
+  labs(title = "Cantidad de Peliculas por Anio", x = "Anio", y = "Cantidad de Peliculas") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+```
+
+El año en el que se hicieron más películas fue **`r anio_max`**, con un total de **`r cantidad_max`** peliculas.
 
 ### 6.¿Cuál es el género principal de las 20 películas más recientes? 
 EA continuación se muestra el género principal de cada una de las 20 películas más recientes. Siendo **comedy** el más repetido con 6 incidencias.  
@@ -82,6 +134,7 @@ table_principal_genres <- recent_movies %>%
 table_principal_genres
 
 ```
+
 ### ¿Cuál es el género principal que predomina en el conjunto de datos? Represéntelo usando un gráfico.
 El género principal que predomina en todo el conjunto de datos es **drama**.
 ```{r echo=FALSE}
@@ -103,6 +156,32 @@ ggplot(genre_counts, aes(x = reorder(first_genre, n), y = n)) +
   theme_minimal()
 
 ```
+
+### 7 ¿Las películas de qué genero principal obtuvieron mayores ganancias?
+
+Es importante mencionar que tomamos como género principal al primer género listado en la columna genres.
+
+```{r echo=FALSE}
+movies <- movies %>%
+  mutate(genero_principal = ifelse(is.na(genres) | genres == "", 
+                                   "Desconocido", 
+                                   trimws(sub("\\|.*", "", genres))))
+
+# Agrupar por género principal y calcular ganancias
+ganancias_por_genero <- movies %>%
+  group_by(genero_principal) %>%
+  summarise(ganancias_totales = sum(revenue, na.rm = TRUE)) %>%
+  arrange(desc(ganancias_totales))
+
+ganancias_por_genero
+
+# Extraer el género con mayores ganancias
+genero_max_ganancias <- ganancias_por_genero$genero_principal[1]
+ganancias_max <- ganancias_por_genero$ganancias_totales[1]
+
+```
+
+El genero con mayores ganancias es **`r genero_max_ganancias`**, con un total de **`r ganancias_max`** dólares.
 
 ### 8.¿A qué género principal pertenecen las películas más largas?  
 Pertenecen a **drama**. NOTA: Se tomaron en cuenta únicamente las primeras 20 películas más largas.
@@ -164,6 +243,47 @@ ggplot(actors_trend, aes(x = releaseYear, y = avg_actors)) +
 
 ```
 
+### 9 ¿Es posible que la cantidad de hombres y mujeres en el reparto influya en la popularidad y los ingresos de las películas?
+
+Para este análisis decidimos revisarlo de 2 formas distintas. Primero quicimos determinar si a medida que hay mayor porcentaje de hombres o mujeres la popularidad y revenue crece. Pero como se puede observar en las gráficaa, el hecho de tener muchos más hombres que mujeres, y viciversa, en una película no implica que haya una relación directa entre el porcentaje del género mayoritario para todos los casos.
+
+```{r echo=FALSE}
+suppressWarnings(movies$castMenAmount <- as.numeric(movies$castMenAmount))
+suppressWarnings(movies$castWomenAmount <- as.numeric(movies$castWomenAmount))
+
+movies <- movies %>%
+  mutate(castMenAmount = replace_na(castMenAmount, 0),
+         castWomenAmount = replace_na(castWomenAmount, 0),
+         totalCast = castMenAmount + castWomenAmount,
+         menRatio = ifelse(totalCast > 0, castMenAmount / totalCast, NA),
+         womenRatio = ifelse(totalCast > 0, castWomenAmount / totalCast, NA))
+
+col_reparto <- c("castMenAmount", "castWomenAmount", "menRatio", "womenRatio", "popularity", "revenue")
+
+pelis_cast_menRatio<- movies %>%
+  select(all_of(col_reparto)) %>%
+  arrange(desc(menRatio))
+
+head(pelis_cast_menRatio, 30)
+
+pelis_cast_womenRatio <- movies %>%
+  select(all_of(col_reparto)) %>%
+  arrange(desc(womenRatio))
+
+head(pelis_cast_womenRatio, 30)
+```
+
+Sin embargo, si ordenamos por popularidad las películas y observamos el porcentaje de genero del cast, se puede observar que en algunas de las películas populares en efecto hay un mayor porcentaje de hombres. Pero como tal el porcentaje de género no influye directamente en la popularidad y mucho menos en las ganancias según lo que se observa debajo.
+
+```{r echo=FALSE}
+pelis_cast_popular <- movies %>%
+  select(all_of(col_reparto)) %>%
+  arrange(desc(popularity))
+
+head(pelis_cast_popular, 30)
+
+```
+
 ### 10. ¿Quiénes son los directores que hicieron las 20 películas mejor calificadas?
 ```{r echo=FALSE}
 movies$director <- iconv(movies$director, from = "latin1", to = "UTF-8", sub = "")
@@ -182,6 +302,44 @@ table_best_movies_directors <- kable(best_movies_directors, caption = 'Directore
 
 table_best_movies_directors
 ```
+
+### 11 ¿Cómo se correlacionan los presupuestos con los ingresos? ¿Los altos presupuestos significan altos ingresos? Haga los gráficos que necesite, histograma, diagrama de dispersión
+
+```{r echo=FALSE}
+movies_clean <- movies %>%
+  filter(budget > 0, revenue > 0)  
+
+ggplot(movies_clean, aes(x = budget, y = revenue)) +
+  geom_point(alpha = 0.5, color = "blue") + 
+  geom_smooth(method = "lm", color = "red", se = FALSE) + 
+  scale_x_log10() + scale_y_log10() +  
+  labs(title = "Relacion entre Presupuesto e Ingresos",
+       x = "Presupuesto (budget)",
+       y = "Ingresos (revenue)") +
+  theme_minimal()
+
+movies_filtered <- movies_clean %>%
+  filter(budget > 0, revenue > 0)
+
+ggplot(movies_filtered, aes(x = budget)) +
+  stat_bin(bins = 30, fill = "blue", color = "black", alpha = 0.7) +  # `bins` en lugar de `binwidth`
+  scale_x_log10() +  
+  labs(title = "Distribucion de Presupuestos de Peliculas",
+       x = "Presupuesto (log)",
+       y = "Frecuencia") +
+  theme_minimal()
+
+# Histograma de Ingresos
+ggplot(movies_filtered, aes(x = revenue)) +
+  stat_bin(bins = 30, fill = "green", color = "black", alpha = 0.7) +  
+  scale_x_log10() + 
+  labs(title = "Distribucion de Ingresos de Peliculas",
+       x = "Ingresos (log)",
+       y = "Frecuencia") +
+  theme_minimal()
+```
+
+Como se puede observar, si hay una tendencia y relación clara entre el budget y el revenue. Aunque un budget alto no represente siempre un pexito, es claro que mientras mayor presupuesto tenga la película, más oportunidad de generar ganancias tiene. A medida que incremente el presupuesto también lo hacen las ganacias.
 
 ### 12. ¿Se asocian ciertos meses de lanzamiento con mejores ingresos?
 Al calcular el promedio de ingresos de las películas agrupadas por mes, podemos observar como las películas estrenadas en junio son la mejor recibidas, seguidas de mayo y julio, el próximo mes en que reciben nien a las películas es en diciembre.
@@ -206,6 +364,37 @@ ggplot(monthly_avg_revenue, aes(x = releaseMonth, y = avg_revenue, fill = releas
 
 ```
 
+### 13 ¿En qué meses se han visto los lanzamientos con mejores ingresos? ¿cuantas películas, en promedio, se han lanzado por mes?
+
+```{r echo=FALSE}
+movies$releaseDate <- as.Date(movies$releaseDate, format = "%d/%m/%Y")
+movies$releaseDate[is.na(movies$releaseDate)] <- NA  # Manejo de fechas nulas
+
+movies$releaseDate <- as.Date(movies$releaseDate, format = "%d/%m/%Y")
+
+movies$mes_texto <- format(movies$releaseDate, "%B")
+
+peli_ingreso_mes <- movies[order(-movies$revenue), c("mes_texto","revenue","title")]
+
+head(peli_ingreso_mes, 30)
+```
+
+```{r echo=FALSE}
+peliculas_por_mes <- movies %>%
+  group_by(mes_texto) %>%
+  summarise(cantidad_peliculas = n())  # pelis por mes
+
+# realmente creo que eel resultado es el mismo si hago 10000/12 peroooo no me di cuenta a tiempo.
+promedio_peliculas_mes <- mean(peliculas_por_mes$cantidad_peliculas)
+
+```
+
+El promedio de peliculas por mes en general es **`r promedio_peliculas_mes`**. A continuación se meustra como se distribuyen las peliculas en los meses del anio.
+
+```{r echo=FALSE}
+peliculas_por_mes
+```
+
 ### 14.¿Cómo se correlacionan las calificaciones con el éxito comercial?
 Existe una relación significativa entre las calificaciones y sus ingresos, pero esta relación no es definitiva ya que el modelo solo aplica un 2% de los ingresos, lo que nos dice que existen otras factores que definen el éxito comercial.
 
@@ -215,8 +404,37 @@ modelo_lineal <- lm(revenue ~ voteAvg, data = movies)
 plot(modelo_lineal)
 ```
 
+### 15 ¿La popularidad del elenco está directamente correlacionada con el éxito de taquilla?
+
+```{r echo=FALSE}
+
+
+# Dividir la columna actorsPopularity en una lista de vectores
+suppressWarnings(movies$actorsPopularity_split <- str_split(movies$actorsPopularity, "\\|"))
+
+# Calcular la popularidad total del elenco para cada película
+suppressWarnings(movies$total_actors_popularity <- sapply(movies$actorsPopularity_split, function(x) {
+  sum(as.numeric(x), na.rm = TRUE)  
+}))
+
+correlacion_elencosss <- cor(movies$total_actors_popularity, movies$revenue, use = "complete.obs")
+
+library(ggplot2)
+ggplot(movies, aes(x = total_actors_popularity, y = revenue)) +
+  geom_point(alpha = 0.5, color = "steelblue") +
+  geom_smooth(method = "lm", color = "red", se = FALSE) +  # Línea de tendencia
+  labs(title = "Relacion entre la Popularidad del Elenco y los Ingresos",
+       x = "Popularidad Total del Elenco",
+       y = "Ingresos (revenue)") +
+  theme_minimal()
+
+```
+
+Al final se tiene un coeficiente de **`r correlacion_elencosss`**. Lo cual indica que hay una correlacion entre la popularidad del elenco y las ganancias y exito en taquilla. Aunque no se tan alto si existen una relacion entre ambas variables.
+
 ### 16. ¿Qué estrategias de marketing, como videos promocionales o páginas oficiales, generan mejores resultados?
 Se observa que tener una **página oficial** está fuertemente asociado con mayores ingresos de las películas mientras que los **videos promocionales** no tienen un impacto significativo. Es decir que las películas con una página oficial tienden a ganar más dinero mientras que la presencia de un video promocional no garantiza mayores ingresos.
+
 ```{r echo=FALSE} 
 movies_clean <- movies %>%
   mutate(video = ifelse(is.na(video), FALSE, video),  # Rellenar NA en 'video' con FALSE
@@ -242,7 +460,75 @@ modelo <- lm(log(revenue) ~ video + has_homePage, data = movies_clean)
 
 ```
 
-## Preguntas extras
+### Extras
+
+### ¿Cuales son los 10 lenguajes originales mas comunes entre todas las peliculas?
+
+```{r echo=FALSE}
+peliculas_por_lenguaje <- movies %>%
+  group_by(originalLanguage) %>%
+  summarise(cantidad_len = n()) %>%
+  arrange(desc(cantidad_len))
+
+top10_lenguajes  <- head(peliculas_por_lenguaje, 10)
+
+top10_lenguajes
+
+ggplot(top10_lenguajes, aes(x = reorder(originalLanguage, -cantidad_len), y = cantidad_len)) +
+  geom_bar(stat = "identity", fill = "steelblue") +
+  labs(title = "Top 10 Lenguajes Originales Mas Comunes", 
+       x = "Lenguaje Original", 
+       y = "Cantidad de Peliculas") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+```
+
+### ¿Hay alguna correlación entre el largo de la pelicula y su popularidad? Son populares las peliculas largas?
+
+```{r echo=FALSE}
+movies_largoxPopularidad <- movies[order(-movies$runtime), c("runtime", "popularity")]
+head(movies_largoxPopularidad, 20)
+
+ggplot(movies, aes(x = runtime, y = popularity)) +
+  geom_point(alpha = 0.5, color = "steelblue") +
+  geom_smooth(method = "lm", color = "red", se = FALSE) +  # 
+  labs(title = "Relacion entre la Duracion y la Popularidad de las Peliculas",
+       x = "Duracion (minutos)",
+       y = "Popularidad") +
+  theme_minimal()
+
+correlacion_time <- cor(movies$runtime, movies$popularity, use = "complete.obs")
+
+print(paste("El coeficiente de correlacion es:", round(correlacion_time, 2)))
+```
+
+Al final se puede observar que realmente no hay una alta correlación entre la duración de la película y su popularidad. Si una película es larga o corta no debería de influir en la popularidad de la película.
+
+El coeficiente de correlación entre la duracion de la pelicula y su popularidaa es **`r round(correlacion_time, 2)`**
+
+### ¿Las peliculas con meyor budget tienen mejores notas promedio?
+
+```{r echo=FALSE}
+movies_VoteAvgxBudget <- movies[order(-movies$budget), c("voteAvg", "budget")]
+
+head(movies_VoteAvgxBudget, 20)
+
+library(ggplot2)
+ggplot(movies, aes(x = budget, y = voteAvg)) +
+  geom_point(alpha = 0.5, color = "steelblue") +
+  geom_smooth(method = "lm", color = "red", se = FALSE) + 
+  labs(title = "Relacion entre el Presupuesto y la Nota Promedio de las Peliculas",
+       x = "Presupuesto (budget)",
+       y = "Nota Promedio (voteAvg)") +
+  theme_minimal()
+
+# correl
+correlacion_budgetXvotes <- cor(movies$budget, movies$voteAvg, use = "complete.obs")
+
+
+```
+
+Se obtuvo un coeficiente de **`r round(correlacion_budgetXvotes, 2)`**. Lo cual indica que el presupuesto de una pelicula no influye para nada en la nota promedio de la pelicula. un buen budget no implica buenas criticas.
+
 ### ¿Existe relación entre el prespuesto de la película y sus ingresos?
 Los resultados indican una **relación positiva y moderadamente fuerte** entre el presupuesto de una película y sus ingresos. El **coeficiente de correlación de Pearson (0.757)** sugiere una asociación positiva considerable entre ambas variables. Además el **modelo de regresión lineal** muestra que en promedio por cada unidad adicional en el presupuesto los ingresos aumentan en **3.09 veces dicho valor**. Sin embargo, el **R² = 0.5737** indica que aproximadamente el **57.4% de la variabilidad en los ingresos** puede explicarse por el presupuesto, lo que sugiere que otros factores también influyen en el éxito de una película. En general el presupuesto es un buen predictor de los ingresos, pero no el único determinante del éxito financiero.
 
