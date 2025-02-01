@@ -2,7 +2,9 @@
 title: "Exploracion de Datos"
 author: "Irving, Chuy"
 date: "2025-01-29"
-output: html_document
+output:
+  pdf_document: default
+  html_document: default
 ---
 
 ```{r setup, include=FALSE}

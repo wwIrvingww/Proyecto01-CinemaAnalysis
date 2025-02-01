@@ -3,8 +3,9 @@ title: "Preguntas_final"
 author: "Irving, Chuy"
 date: "2025-01-31"
 output:
+  pdf_document: default
   html_document:
-    df_print: paged 
+    df_print: paged
 ---
 
 ```{r setup, include=FALSE}
