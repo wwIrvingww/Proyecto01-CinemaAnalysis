@@ -55,6 +55,8 @@ df_final$month <- month(df_final$releaseDate)
 df_final$day <- day(df_final$releaseDate)
 
 df_final <- df_final %>% select(-releaseDate)
+df_final <- df_final %>% select(-id)
+
 
 df_final
 ```
