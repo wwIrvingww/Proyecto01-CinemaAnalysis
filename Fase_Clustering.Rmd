@@ -23,7 +23,7 @@ movies <- read.csv("./movies.csv")
 
 ```
 
-## Seleccion de columnas
+## 1.1 Seleccion de columnas
 ```{r echo=FALSE}
 columns <- c("id", "popularity", "budget", "revenue", "runtime", "genresAmount", "productionCountriesAmount", "releaseDate", "voteCount", "voteAvg", "actorsPopularity", "actorsAmount", "castWomenAmount", "castMenAmount")
 
@@ -48,7 +48,7 @@ df_final <- selected_movies_clustr %>%
 
 df_final <- df_final %>% select(-actorsPopularity)
 
-df_final$releaseDate <- as.Date(df_final$releaseDate, format = "%d/%m/%d")
+df_final$releaseDate <- as.Date(df_final$releaseDate, format = "%d/%m/%Y")
 
 df_final$year <- year(df_final$releaseDate)
 df_final$month <- month(df_final$releaseDate)
@@ -58,5 +58,49 @@ df_final <- df_final %>% select(-releaseDate)
 df_final <- df_final %>% select(-id)
 
 
+# columnas que se deben pasar a char
+
+# data filtering
+# Keep only rows where the column is purely numeric before converting
+df_final <- df_final %>%
+  mutate(
+    castWomenAmount = ifelse(grepl("^[0-9]+$", castWomenAmount), as.integer(castWomenAmount), NA),
+    castMenAmount = ifelse(grepl("^[0-9]+$", castMenAmount), as.integer(castMenAmount), NA)
+  )
+
+# Replace remaining NA values with 0
+df_final$castWomenAmount[is.na(df_final$castWomenAmount)] <- 0
+df_final$castMenAmount[is.na(df_final$castMenAmount)] <- 0
+
+
 df_final
 ```
+## Escalado de los datos
+Es importante escalar los datos antes de realizar agrupamientos cuando se utilizan tecnicas de aprendizaje no supervisado como lo es el clustering. Dentro del data set tenemos unicamente vlores numericos, entonces podemos escalarlos para que el agrupamiento funcione mejor.
+
+```{r echo=FALSE}
+df_final <- scale(df_final)
+colSums(is.na(df_final))
+```
+
+## Estadistico de Hopkins 
+
+Es importante saber si es plausible hacer un agrupamiento de datos con la data frame que tenemos. Para ello hemos decidido utilizar el estadistico de hopkins
+```{r echo=FALSE}
+set.seed(123)
+hopkins(df_final)
+```
+Como se puede observar el data set tiene bastante potencial para hacer grupos.Es raro que los datos esten tan bien relacionados (el valor fue de 1) pero si probamos revolviendo los datos de igual manera se obtiene un numero cercano a 1. Lo cual implica que los datos pueden agruparse bastante bien
+
+```{r echo=FALSE}
+set.seed(123)
+df_shuffled <- df_final[sample(nrow(df_final)), ]
+hopkins(df_shuffled)
+```
+
+```{r echo=FALSE}
+set.seed(123)
+
+```
+
+
