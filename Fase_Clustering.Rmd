@@ -13,6 +13,9 @@ library(dplyr)
 library(kableExtra)
 library(tidyr)
 library(ggplot2)
+
+library(hopkins)
+library(lubridate)
 ```
 
 ```{r, include=FALSE}
@@ -20,18 +23,38 @@ movies <- read.csv("./movies.csv")
 
 ```
 
-```{r, include=FALSE}
-columns <- c("popularity", "budget", "revenue", "runtime", "genresAmount", "productionCountriesAmount", "releaseDate", "voteCount", "voteAvg", "actorsPopularity", "actorsAmount", "castWomenAmount", "castMenAmount")
+## Seleccion de columnas
+```{r echo=FALSE}
+columns <- c("id", "popularity", "budget", "revenue", "runtime", "genresAmount", "productionCountriesAmount", "releaseDate", "voteCount", "voteAvg", "actorsPopularity", "actorsAmount", "castWomenAmount", "castMenAmount")
 
-new_movies <- movies[,c]
+selected_movies_clustr <- movies[,columns]
+
+selected_movies_clustr
+
 ```
 
-```{r, include=FALSE}
-set.seed(123)
-hopkins(datos[,1:4])
+# Conversion de columnas no numericas
+```{r echo=FALSE}
+pupoular_sum <- selected_movies_clustr %>%
+  separate_rows( actorsPopularity, sep = "|") %>%
+  mutate(actorsPopularity = as.numeric(actorsPopularity)) %>%
+  group_by(id) %>%
+  summarise(totalActorPopularity = sum(actorsPopularity, na.rm = TRUE))
+
+pupoular_sum
+
+df_final <- selected_movies_clustr %>%
+  left_join(pupoular_sum, by = "id")
+
+df_final <- df_final %>% select(-actorsPopularity)
+
+df_final$releaseDate <- as.Date(df_final$releaseDate, format = "%d/%m/%d")
+
+df_final$year <- year(df_final$releaseDate)
+df_final$month <- month(df_final$releaseDate)
+df_final$day <- day(df_final$releaseDate)
+
+df_final <- df_final %>% select(-releaseDate)
+
+df_final
 ```
-
-
-
-
-
