@@ -16,6 +16,7 @@ library(ggplot2)
 
 library(hopkins)
 library(lubridate)
+library(factoextra)
 ```
 
 ```{r, include=FALSE}
@@ -97,10 +98,28 @@ set.seed(123)
 df_shuffled <- df_final[sample(nrow(df_final)), ]
 hopkins(df_shuffled)
 ```
+Con esto practicamente nos aseguramos de que nuestros datos pueden ser agrupados exitosamente. Antes de proceder con la definicion de grupos, haremos un un VAT (Evaluacion visual de tendencia por sus siglas en ingles). Este metodo grafico ayudara a corroborar el estdistico de hopkins de manera visual. Si se ve un patron visible y no aleatorio eso quiere decir que nuevamente los datos son adecuados para agruparse. Nota: Tomamos una muestra aleatorio del data set con el fin de ahorrar recursos computacionales. EL dataset tiene 10000 lineas, por lo que tomar el data set completo tomaria demasiado tiempo
 
 ```{r echo=FALSE}
 set.seed(123)
+sampled_df <- df_final[sample(nrow(df_final), 1000), ]  # muestra
+dist_matrix <- dist(sampled_df)
+fviz_dist(dist_matrix, show_labels = FALSE)
 
 ```
 
+Puede observarse un patron visible, por lo que podemos decir que en efecto la data que tenemos puede ser agrupada. Puede que se vea un poco opaco, pero esto ocurre debido a que realmente no estamos usando la totalidad de los datos. Ahora que ya hemos confirmado que podemos agrupar, hay que definir la cantidad de grupos que deseamos hacer mediante el clustering. El numero de grupos lo obtendremos mediante el grafico de codo.
+
+## Grafico de codo
+``` {r echo=FALSE}
+wss=0
+
+wss <- sapply(1:10, function(i) sum(kmeans(df_final, centers = i)$withinss))
+
+# Graficando el codo
+plot(1:10, wss, type = "b", pch = 19, col = "blue", 
+     xlab = "Número de Clusters", ylab = "Suma de cuadrados dentro de los grupos",
+     main = "Método del Codo")
+
+```
 
