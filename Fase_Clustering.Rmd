@@ -62,7 +62,6 @@ df_final <- df_final %>% select(-id)
 # columnas que se deben pasar a char
 
 # data filtering
-# Keep only rows where the column is purely numeric before converting
 df_final <- df_final %>%
   mutate(
     castWomenAmount = ifelse(grepl("^[0-9]+$", castWomenAmount), as.integer(castWomenAmount), NA),
@@ -80,8 +79,9 @@ df_final
 Es importante escalar los datos antes de realizar agrupamientos cuando se utilizan tecnicas de aprendizaje no supervisado como lo es el clustering. Dentro del data set tenemos unicamente vlores numericos, entonces podemos escalarlos para que el agrupamiento funcione mejor.
 
 ```{r echo=FALSE}
-df_final <- scale(df_final)
-colSums(is.na(df_final))
+# Comentado de momento, escalar los datos impide que se vea el grafico de codo bien
+# df_final <- scale(df_final)
+# colSums(is.na(df_final))
 ```
 
 ## Estadistico de Hopkins 
