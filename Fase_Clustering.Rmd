@@ -14,9 +14,15 @@ library(kableExtra)
 library(tidyr)
 library(ggplot2)
 
-library(hopkins)
-library(lubridate)
-library(factoextra)
+library(cluster) #Para calcular la silueta
+library(e1071)#para cmeans
+library(mclust) #mixtures of gaussians
+library(fpc) #para hacer el plotcluster
+library(NbClust) #Para determinar el número de clusters óptimo
+library(factoextra) #Para hacer gráficos bonitos de clustering
+library(hopkins) #Para revisar si vale la pena hacer agrupamiento
+library(FeatureImpCluster) #Para revisar la importancia de las variables en los grupos.
+library(pheatmap) #Para hacer mapa de calor
 ```
 
 ```{r, include=FALSE}
@@ -51,9 +57,9 @@ df_final <- df_final %>% select(-actorsPopularity)
 
 df_final$releaseDate <- as.Date(df_final$releaseDate, format = "%d/%m/%Y")
 
-df_final$year <- year(df_final$releaseDate)
-df_final$month <- month(df_final$releaseDate)
-df_final$day <- day(df_final$releaseDate)
+# df_final$year <- year(df_final$releaseDate)
+# df_final$month <- month(df_final$releaseDate)
+# df_final$day <- day(df_final$releaseDate)
 
 df_final <- df_final %>% select(-releaseDate)
 df_final <- df_final %>% select(-id)
@@ -118,8 +124,68 @@ wss <- sapply(1:10, function(i) sum(kmeans(df_final, centers = i)$withinss))
 
 # Graficando el codo
 plot(1:10, wss, type = "b", pch = 19, col = "blue", 
-     xlab = "Número de Clusters", ylab = "Suma de cuadrados dentro de los grupos",
-     main = "Método del Codo")
+     xlab = "Numero de Clusters", ylab = "Suma de cuadrados dentro de los grupos",
+     main = "Metodo del Codo")
 
 ```
 
+Como se puede observar el grafico de codo indica que la cantidad ideal de grupos es 3 o 4. Justo en esa parte de la grafica es donde se ve la forma que indica la cantidad de grupos apropiados para realizar el clustering. 
+
+## Agrupamiento
+
+Ahora que ya conocemos el numero de grupos es necesario agrupar los datos utilizando algoritmos. Se usaran y evaluaron 2 principalmente "Kmeans" y "Clustering jerarquico" con la cantidad de 3 grupos.
+
+
+### Kmeans
+```{r echo=FALSE}
+set.seed(123) 
+km <- kmeans(df_final,3,iter.max = 100)
+
+df_final$grupo <- km$cluster
+
+km
+
+fviz_cluster(km, data = df_final)
+
+km$withinss
+```
+
+### Clustering jerarquico
+```{r echo=FALSE}
+# Take a random subset of 1000 observations for faster computation
+df_dist <- dist(df_final)
+hc<-hclust(df_dist, method = "ward.D2") #Genera el clustering jerÃ¡rquico de los datos
+plot(hc, cex=0.5, axes=FALSE) #Genera el dendograma
+rect.hclust(hc,k=3)
+
+```
+
+```{r echo=FALSE}
+groups<-cutree(hc,k=3) 
+df_final$gruposHC<-groups
+
+table(df_final$gruposHC) # tamanio de los grupos
+by(df_final, df_final[,"gruposHC"], colMeans)
+
+```
+
+## Evaluacion con metodo de silhueta de K-means
+```{r echo=FALSE}
+
+silkm <- silhouette(km$cluster,df_dist)
+
+mean(silkm[,3])
+
+fviz_silhouette(silkm, main = "Silhouette Plot for K-means", color = "cluster")
+
+```
+
+## Evaluacion con metodo de silhueta para Clustering Jerarquico
+```{r echo=FALSE}
+
+silhc<-silhouette(groups,df_dist)
+mean(silhc[,3]) #0.45, no es la mejor particiÃ³n pero no estÃ¡ mal
+
+fviz_silhouette(silhc, main = "Silhouette Plot for Hierarchical Clustering", color = "cluster")
+
+```
