@@ -14,6 +14,7 @@ library(kableExtra)
 library(tidyr)
 library(ggplot2)
 
+library(lubridate)
 library(cluster) #Para calcular la silueta
 library(e1071)#para cmeans
 library(mclust) #mixtures of gaussians
@@ -78,15 +79,25 @@ df_final <- df_final %>%
 df_final$castWomenAmount[is.na(df_final$castWomenAmount)] <- 0
 df_final$castMenAmount[is.na(df_final$castMenAmount)] <- 0
 
+# Aqui se puede probar con tamanios distintos de muestras. 
+# df_final <- df_final[sample(nrow(df_final), 100), ]
+
+z_scores <- scale(df_final) 
+outliers <- apply(abs(z_scores) > 3, 2, sum)  # Count extreme values
+print(outliers)
+
+df_final <- df_final %>%
+  mutate(across(where(is.numeric), ~ ifelse(. > quantile(., 0.99), quantile(., 0.99), .)))
 
 df_final
+
 ```
 ## Escalado de los datos
 Es importante escalar los datos antes de realizar agrupamientos cuando se utilizan tecnicas de aprendizaje no supervisado como lo es el clustering. Dentro del data set tenemos unicamente vlores numericos, entonces podemos escalarlos para que el agrupamiento funcione mejor.
 
 ```{r echo=FALSE}
 # Comentado de momento, escalar los datos impide que se vea el grafico de codo bien
-# df_final <- scale(df_final)
+df_final <- as.data.frame(scale(df_final))  # Convert back to data.frame
 # colSums(is.na(df_final))
 ```
 
@@ -97,7 +108,7 @@ Es importante saber si es plausible hacer un agrupamiento de datos con la data f
 set.seed(123)
 hopkins(df_final)
 ```
-Como se puede observar el data set tiene bastante potencial para hacer grupos.Es raro que los datos esten tan bien relacionados (el valor fue de 1) pero si probamos revolviendo los datos de igual manera se obtiene un numero cercano a 1. Lo cual implica que los datos pueden agruparse bastante bien
+Como se puede observar el data set tiene bastante potencial para hacer grupos.Es raro que los datos esten tan bien relacionados (el valor fue de 1 en algunas pruebas) pero si probamos revolviendo los datos de igual manera se obtiene un numero cercano a 1. Lo cual implica que los datos pueden agruparse bastante bien
 
 ```{r echo=FALSE}
 set.seed(123)
@@ -111,7 +122,6 @@ set.seed(123)
 sampled_df <- df_final[sample(nrow(df_final), 1000), ]  # muestra
 dist_matrix <- dist(sampled_df)
 fviz_dist(dist_matrix, show_labels = FALSE)
-
 ```
 
 Puede observarse un patron visible, por lo que podemos decir que en efecto la data que tenemos puede ser agrupada. Puede que se vea un poco opaco, pero esto ocurre debido a que realmente no estamos usando la totalidad de los datos. Ahora que ya hemos confirmado que podemos agrupar, hay que definir la cantidad de grupos que deseamos hacer mediante el clustering. El numero de grupos lo obtendremos mediante el grafico de codo.
@@ -120,13 +130,22 @@ Puede observarse un patron visible, por lo que podemos decir que en efecto la da
 ``` {r echo=FALSE}
 wss=0
 
-wss <- sapply(1:10, function(i) sum(kmeans(df_final, centers = i)$withinss))
+wss <- sapply(1:8, function(i) sum(kmeans(df_final, centers = i)$withinss))
 
 # Graficando el codo
-plot(1:10, wss, type = "b", pch = 19, col = "blue", 
+plot(1:8, wss, type = "b", pch = 19, col = "blue", 
      xlab = "Numero de Clusters", ylab = "Suma de cuadrados dentro de los grupos",
      main = "Metodo del Codo")
 
+sil_width <- sapply(2:8, function(i) {
+  km <- kmeans(df_final, centers = i)
+  ss <- silhouette(km$cluster, dist(df_final))
+  mean(ss[, 3])
+})
+
+plot(2:8, sil_width, type = "b", pch = 19, col = "blue", 
+     xlab = "Número de Clusters", ylab = "Ancho de Silueta",
+     main = "Método de la Silueta")
 ```
 
 Como se puede observar el grafico de codo indica que la cantidad ideal de grupos es 3 o 4. Justo en esa parte de la grafica es donde se ve la forma que indica la cantidad de grupos apropiados para realizar el clustering. 
@@ -139,7 +158,7 @@ Ahora que ya conocemos el numero de grupos es necesario agrupar los datos utiliz
 ### Kmeans
 ```{r echo=FALSE}
 set.seed(123) 
-km <- kmeans(df_final,3,iter.max = 100)
+km <- kmeans(df_final,3,iter.max = 1000)
 
 df_final$grupo <- km$cluster
 
@@ -152,9 +171,9 @@ km$withinss
 
 ### Clustering jerarquico
 ```{r echo=FALSE}
-# Take a random subset of 1000 observations for faster computation
+
 df_dist <- dist(df_final)
-hc<-hclust(df_dist, method = "ward.D2") #Genera el clustering jerÃ¡rquico de los datos
+hc<-hclust(df_dist, method = "ward.D2") #Genera el clustering jerarquico
 plot(hc, cex=0.5, axes=FALSE) #Genera el dendograma
 rect.hclust(hc,k=3)
 
@@ -173,10 +192,10 @@ by(df_final, df_final[,"gruposHC"], colMeans)
 ```{r echo=FALSE}
 
 silkm <- silhouette(km$cluster,df_dist)
-
+silkm
 mean(silkm[,3])
 
-fviz_silhouette(silkm, main = "Silhouette Plot for K-means", color = "cluster")
+fviz_silhouette(silkm, main = "Silhueta para K-Medias", color = "cluster")
 
 ```
 
@@ -184,8 +203,9 @@ fviz_silhouette(silkm, main = "Silhouette Plot for K-means", color = "cluster")
 ```{r echo=FALSE}
 
 silhc<-silhouette(groups,df_dist)
-mean(silhc[,3]) #0.45, no es la mejor particiÃ³n pero no estÃ¡ mal
+mean(silhc[,3]) #
 
-fviz_silhouette(silhc, main = "Silhouette Plot for Hierarchical Clustering", color = "cluster")
+fviz_silhouette(silhc, main = "Silhueta para clustering jerarquico", color = "cluster")
 
 ```
+
