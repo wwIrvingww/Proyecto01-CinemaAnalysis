@@ -229,12 +229,24 @@ df_final %>%
   summarise(across(where(is.numeric), list(media = mean, mediana = median, sd = sd), na.rm = TRUE))
 
 df_final %>%
+  filter(grupo == 1) %>%
   pivot_longer(cols = c(budget, revenue, runtime, genresAmount, voteCount, voteAvg, actorsAmount, totalActorPopularity), 
                names_to = "variable", values_to = "valor") %>%
   ggplot(aes(x = valor, fill = as.factor(grupo))) +
   geom_histogram(alpha = 0.6, bins = 30, position = "identity") +
   facet_wrap(~ variable, scales = "free") +
-  labs(title = "Distribucion de Variables Numéricas por Grupo", x = "Valor", y = "Frecuencia") +
+  labs(title = "Distribución de Variables Numéricas para Grupo 1", x = "Valor", y = "Frecuencia") +
+  theme_minimal()
+
+# Histograma para los demás grupos
+df_final %>%
+  filter(grupo != 1) %>%
+  pivot_longer(cols = c(budget, revenue, runtime, genresAmount, voteCount, voteAvg, actorsAmount, totalActorPopularity), 
+               names_to = "variable", values_to = "valor") %>%
+  ggplot(aes(x = valor, fill = as.factor(grupo))) +
+  geom_histogram(alpha = 0.6, bins = 30, position = "identity") +
+  facet_wrap(~ variable, scales = "free") +
+  labs(title = "Distribución de Variables Numéricas para Otros Grupos", x = "Valor", y = "Frecuencia") +
   theme_minimal()
 
 df_promedios <- df_final %>%
@@ -313,18 +325,6 @@ df_final %>%
   theme_minimal()
 
 df_final %>%
-  separate_rows(productionCountry, sep = "\\|") %>%
-  count(grupo, productionCountry) %>%
-  group_by(grupo) %>%
-  slice_max(n, n = 10) %>%  # Filtrar los 10 países más frecuentes por grupo
-  ungroup() %>%
-  ggplot(aes(x = reorder(productionCountry, n), y = n, fill = as.factor(grupo))) +
-  geom_col(position = "dodge") +
-  coord_flip() +
-  labs(title = "Top 10 Production Countries por Grupo", x = "Pais", y = "Frecuencia") +
-  theme_minimal()
-
-df_final %>%
   separate_rows(director, sep = "\\|") %>%
   count(grupo, director) %>%
   group_by(grupo) %>%
@@ -337,3 +337,11 @@ df_final %>%
   theme_minimal()
 
 ```
+
+# Conclusiones 
+
+Luego de ver los resultados del agrupamiento tenemos 2 grupos que llaman la atención principalmente, el grupo 1 y el grupo 2. Analizando primero el grupo 2 nos podemos dar cuenta que es el grupo que tiene más datos de todos. Este es un cluster bastante grande y que tiene una gran variedad de películas. Este es particularmente para útil ver cuáles son los datos más comunes y populares dentro del set de datos en general. En este se pueden ver varios datos interesantes como los géneros de películas más comunes, por ejemplo, Drama, acción, thriller, comedia y horrar, son de los datos que más se repiten en el grupo 1. Osea que en general son los géneros de película más producidos. Además de esto podemos ver a las productoras, siendo las más recurrentes Warner Bros y Universal. Otra cosa es que en general casi todas las películas fueron producidas en algún punto en Estados unidos. Luego se puede ver que hay Directores que han participado en una cantidad enorme de proyectos en comparación a los demás. Siendo Sam Liu el mayor participe en la dirección de películas, seguido de Kunihiko Yuyama y Woody Allen.  
+
+Pero es importante mencionar algo, que sea el cluster de películas más grande no quiere decir que sea el más exitoso. La otra parte interesante de este análisis se encuentra en el grupo 1. Como se pudo observar en las gráficas, el grupo 4 tiene menor representación y frecuencia en casi todas las ocasiones, pero esto no es algo malo. Si observamos la gráfica de valores promedio por grupo, podemos ver que el budget y revenue de las películas del grupo 2 no es muy alto en comparación a los demás grupos. Las películas del grupo 2, son de bajo presupuesto y por eso es que son las más comunes dentro de todos. Mientras que las películas del grupo 1, son los que fueron agrupados por ser más costosos, pero con mucho más ganancia en retorno.  Las películas con la mayor cantidad de budget por lo general tienen mayor popularidad en los actores, mejor nota promedio y son películas más largas. Y finalmente una relación bastante interesante que encontramos es la relación del director con las películas. Al ver el top 10 directores recurrentes en las películas (por grupo) podemos destacar los nombres de muchos directores de cine famosos que han hecho grandes éxitos. Directores como Steven Spilberg, Peter Jackson, Michael Bay, George Lucas, Christopher Nolan, entro otros. 
+
+Al final los grupos dan a entender que estan categorizados respecto al costo, el revenue y el éxito que estás películas han tenido debido a sus actores y/o directores. 
