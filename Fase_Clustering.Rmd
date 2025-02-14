@@ -99,7 +99,7 @@ Es importante escalar los datos antes de realizar agrupamientos cuando se utiliz
 
 ```{r echo=FALSE}
 # Comentado de momento, escalar los datos impide que se vea el grafico de codo bien
-df_final <- as.data.frame(scale(df_final))  # Convert back to data.frame
+# df_final <- as.data.frame(scale(df_final))  # Convert back to data.frame
 # colSums(is.na(df_final))
 ```
 
@@ -139,15 +139,15 @@ plot(1:8, wss, type = "b", pch = 19, col = "blue",
      xlab = "Numero de Clusters", ylab = "Suma de cuadrados dentro de los grupos",
      main = "Metodo del Codo")
 
-sil_width <- sapply(2:8, function(i) {
-  km <- kmeans(df_final, centers = i)
-  ss <- silhouette(km$cluster, dist(df_final))
-  mean(ss[, 3])
-})
+#sil_width <- sapply(2:8, function(i) {
+#  km <- kmeans(df_final, centers = i)
+#  ss <- silhouette(km$cluster, dist(df_final))
+#  mean(ss[, 3])
+#})
 
-plot(2:8, sil_width, type = "b", pch = 19, col = "blue", 
-     xlab = "Número de Clusters", ylab = "Ancho de Silueta",
-     main = "Método de la Silueta")
+#plot(2:8, sil_width, type = "b", pch = 19, col = "blue", 
+#     xlab = "Número de Clusters", ylab = "Ancho de Silueta",
+#     main = "Método de la Silueta")
 ```
 
 Como se puede observar el grafico de codo indica que la cantidad ideal de grupos es 3 o 4. Justo en esa parte de la grafica es donde se ve la forma que indica la cantidad de grupos apropiados para realizar el clustering. 
@@ -166,7 +166,7 @@ df_final$grupo <- km$cluster
 
 km
 
-fviz_cluster(km, data = df_final)
+fviz_cluster(km, data = df_final, ellipse.type = "norm")
 
 km$withinss
 ```
@@ -194,7 +194,7 @@ by(df_final, df_final[,"gruposHC"], colMeans)
 ```{r echo=FALSE}
 
 silkm <- silhouette(km$cluster,df_dist)
-silkm
+
 mean(silkm[,3])
 
 fviz_silhouette(silkm, main = "Silhueta para K-Medias", color = "cluster")
@@ -215,27 +215,125 @@ Al final se puede observar que el algoritmo de Kmedias fue ligeramente mejor que
 
 ```{r echo=FALSE}
 
-
 df_final <- cbind(df_ids, df_final)
-
 df_final <- df_final %>%
   left_join(movies %>% select(id, genres, productionCompany, productionCountry, productionCompanyCountry, director, actors, originalLanguage), by = "id")
 
-df_final
+```
+
+# Analisis de las variables numericas
+```{r echo=FALSE}
 
 df_final %>%
   group_by(grupo) %>%
   summarise(across(where(is.numeric), list(media = mean, mediana = median, sd = sd), na.rm = TRUE))
 
 df_final %>%
+  pivot_longer(cols = c(budget, revenue, runtime, genresAmount, voteCount, voteAvg, actorsAmount, totalActorPopularity), 
+               names_to = "variable", values_to = "valor") %>%
+  ggplot(aes(x = valor, fill = as.factor(grupo))) +
+  geom_histogram(alpha = 0.6, bins = 30, position = "identity") +
+  facet_wrap(~ variable, scales = "free") +
+  labs(title = "Distribucion de Variables Numéricas por Grupo", x = "Valor", y = "Frecuencia") +
+  theme_minimal()
+
+df_promedios <- df_final %>%
+  group_by(grupo) %>%
+  summarise(across(c(budget, revenue, runtime, genresAmount, voteCount, voteAvg, actorsAmount, totalActorPopularity), 
+                   mean, na.rm = TRUE), .groups = "drop") %>%
+  pivot_longer(cols = -grupo, names_to = "variable", values_to = "promedio")
+
+# Variables con valores muy grandes
+df_promedios_grandes <- df_promedios %>%
+  filter(variable %in% c("budget", "revenue"))
+
+ggplot(df_promedios_grandes, aes(x = as.factor(grupo), y = promedio, fill = as.factor(grupo))) +
+  geom_col(position = "dodge") +
+  facet_wrap(~ variable, scales = "free") +
+  labs(title = "Promedio de Variables con Valores Grandes por Grupo", x = "Grupo", y = "Promedio") +
+  theme_minimal()
+
+# Variables con valores más pequeños
+df_promedios_pequenos <- df_promedios %>%
+  filter(variable %in% c("runtime", "genresAmount", "voteCount", "voteAvg", "actorsAmount", "totalActorPopularity"))
+
+ggplot(df_promedios_pequenos, aes(x = as.factor(grupo), y = promedio, fill = as.factor(grupo))) +
+  geom_col(position = "dodge") +
+  facet_wrap(~ variable, scales = "free") +
+  labs(title = "Promedio de Variables con Valores Pequeños por Grupo", x = "Grupo", y = "Promedio") +
+  theme_minimal()
+
+
+
+```
+
+```{r echo=FALSE}
+
+ggplot(df_final, aes(x = as.factor(grupo), y = budget)) +
+  geom_boxplot() +
+  labs(title = "Distribucion del Presupuesto por Grupo", x = "Grupo", y = "Presupuesto")
+
+```
+
+# Analisis de frecuencia con variables categoricas
+```{r  echo=FALSE}
+df_final %>%
   separate_rows(genres, sep = "\\|") %>%
   count(grupo, genres) %>%
-  arrange(grupo, desc(n))
+  ggplot(aes(x = genres, y = n, fill = as.factor(grupo))) +
+  geom_col(position = "dodge") +
+  coord_flip() +
+  labs(title = "Frecuencia de Géneros por Grupo", x = "Genero", y = "Frecuencia")
+
+df_final <- df_final %>%
+  mutate(across(where(is.character), ~ iconv(.x, from = "latin1", to = "UTF-8")))
 
 df_final %>%
   separate_rows(productionCompany, sep = "\\|") %>%
   count(grupo, productionCompany) %>%
-  arrange(grupo, desc(n))
+  group_by(grupo) %>%
+  slice_max(n, n = 10) %>%  # Filtrar los 10 más frecuentes de cada grupo
+  ungroup() %>%
+  ggplot(aes(x = reorder(productionCompany, n), y = n, fill = as.factor(grupo))) +
+  geom_col(position = "dodge") +
+  coord_flip() +
+  labs(title = "Top 10 Production Companies por Grupo", x = "Production Company", y = "Frecuencia") +
+  theme_minimal()
 
+df_final %>%
+  separate_rows(productionCountry, sep = "\\|") %>%
+  count(grupo, productionCountry) %>%
+  group_by(grupo) %>%
+  slice_max(n, n = 10) %>%  # Filtrar los 10 países más frecuentes por grupo
+  ungroup() %>%
+  ggplot(aes(x = reorder(productionCountry, n), y = n, fill = as.factor(grupo))) +
+  geom_col(position = "dodge") +
+  coord_flip() +
+  labs(title = "Top 10 Production Countries por Grupo", x = "País", y = "Frecuencia") +
+  theme_minimal()
+
+df_final %>%
+  separate_rows(productionCountry, sep = "\\|") %>%
+  count(grupo, productionCountry) %>%
+  group_by(grupo) %>%
+  slice_max(n, n = 10) %>%  # Filtrar los 10 países más frecuentes por grupo
+  ungroup() %>%
+  ggplot(aes(x = reorder(productionCountry, n), y = n, fill = as.factor(grupo))) +
+  geom_col(position = "dodge") +
+  coord_flip() +
+  labs(title = "Top 10 Production Countries por Grupo", x = "Pais", y = "Frecuencia") +
+  theme_minimal()
+
+df_final %>%
+  separate_rows(director, sep = "\\|") %>%
+  count(grupo, director) %>%
+  group_by(grupo) %>%
+  slice_max(n, n = 10) %>%  # Filtrar los 10 países más frecuentes por grupo
+  ungroup() %>%
+  ggplot(aes(x = reorder(director, n), y = n, fill = as.factor(grupo))) +
+  geom_col(position = "dodge") +
+  coord_flip() +
+  labs(title = "Top 10 Directores por Grupo", x = "Director", y = "Frecuencia") +
+  theme_minimal()
 
 ```
