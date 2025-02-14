@@ -63,6 +63,8 @@ df_final$releaseDate <- as.Date(df_final$releaseDate, format = "%d/%m/%Y")
 # df_final$day <- day(df_final$releaseDate)
 
 df_final <- df_final %>% select(-releaseDate)
+df_ids <- selected_movies_clustr %>% select(id)
+
 df_final <- df_final %>% select(-id)
 
 
@@ -209,3 +211,31 @@ fviz_silhouette(silhc, main = "Silhueta para clustering jerarquico", color = "cl
 
 ```
 
+Al final se puede observar que el algoritmo de Kmedias fue ligeramente mejor que el clustering jerarquico. Por lo que se utilizaran los grupos creados mediante dicho algoritmo. Aunque la metrica de la silhueta muestra un valor que no es tan cercano a 1, de igual manera los grupos son evidentes de manera grafica. Ahora se pueden analizar los grupos
+
+```{r echo=FALSE}
+
+
+df_final <- cbind(df_ids, df_final)
+
+df_final <- df_final %>%
+  left_join(movies %>% select(id, genres, productionCompany, productionCountry, productionCompanyCountry, director, actors, originalLanguage), by = "id")
+
+df_final
+
+df_final %>%
+  group_by(grupo) %>%
+  summarise(across(where(is.numeric), list(media = mean, mediana = median, sd = sd), na.rm = TRUE))
+
+df_final %>%
+  separate_rows(genres, sep = "\\|") %>%
+  count(grupo, genres) %>%
+  arrange(grupo, desc(n))
+
+df_final %>%
+  separate_rows(productionCompany, sep = "\\|") %>%
+  count(grupo, productionCompany) %>%
+  arrange(grupo, desc(n))
+
+
+```
