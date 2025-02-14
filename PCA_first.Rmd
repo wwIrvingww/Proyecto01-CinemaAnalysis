@@ -1,0 +1,210 @@
+---
+title: "PCA"
+author: "Irving, Chuy"
+date: "2025-02-14"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+library(knitr)  # Asegura que knitr está cargado
+knitr::opts_chunk$set(echo = TRUE)
+# Librerías necesarias
+library(corrplot)
+library(dplyr)
+library(tidyr)
+library(ggplot2)  
+library(psych)  # Para KMO y Bartlett
+library(FactoMineR)
+library(fpc)
+library(factoextra)
+library(PCAmixdata)
+
+
+```
+
+En este informe se realiza un Análisis de Componentes Principales, ya que la cantidad de variables con las que cuenta el dataset es extensa, puede causar problemas o complicaciones en otros tipos de estudio que se deseen realizar en un futuro. Por lo que se determina si vale la pena aplicar las componentes principales y en caso de que sí valga la pena, determinar cuántos son necesarios para explicar la mayor variabilidad posible.
+
+```{r, include=FALSE}
+movies <- read.csv("./movies.csv")
+
+```
+
+```{r include=FALSE}
+#Seleccion de columnas
+columns <- c("id", "popularity", "budget", "revenue", "runtime", "genresAmount", "productionCountriesAmount", "releaseDate", "voteCount", "voteAvg", "actorsPopularity", "actorsAmount", "castWomenAmount", "castMenAmount")
+
+selected_movies_clustr <- movies[,columns]
+
+selected_movies_clustr
+
+```
+
+```{r include=FALSE}
+# Conversion de columnas no numericas
+pupoular_sum <- selected_movies_clustr %>%
+  separate_rows( actorsPopularity, sep = "|") %>%
+  mutate(actorsPopularity = as.numeric(actorsPopularity)) %>%
+  group_by(id) %>%
+  summarise(totalActorPopularity = sum(actorsPopularity, na.rm = TRUE))
+
+pupoular_sum
+
+df_final <- selected_movies_clustr %>%
+  left_join(pupoular_sum, by = "id")
+
+df_final <- df_final %>% select(-actorsPopularity)
+
+df_final$releaseDate <- as.Date(df_final$releaseDate, format = "%d/%m/%Y")
+
+# df_final$year <- year(df_final$releaseDate)
+# df_final$month <- month(df_final$releaseDate)
+# df_final$day <- day(df_final$releaseDate)
+
+df_final <- df_final %>% select(-releaseDate)
+df_ids <- selected_movies_clustr %>% select(id)
+
+df_final <- df_final %>% select(-id)
+
+
+# columnas que se deben pasar a char
+
+# data filtering
+df_final <- df_final %>%
+  mutate(
+    castWomenAmount = ifelse(grepl("^[0-9]+$", castWomenAmount), as.integer(castWomenAmount), NA),
+    castMenAmount = ifelse(grepl("^[0-9]+$", castMenAmount), as.integer(castMenAmount), NA)
+  )
+
+# Replace remaining NA values with 0
+df_final$castWomenAmount[is.na(df_final$castWomenAmount)] <- 0
+df_final$castMenAmount[is.na(df_final$castMenAmount)] <- 0
+
+# Aqui se puede probar con tamanios distintos de muestras. 
+# df_final <- df_final[sample(nrow(df_final), 100), ]
+
+z_scores <- scale(df_final) 
+outliers <- apply(abs(z_scores) > 3, 2, sum)  # Count extreme values
+print(outliers)
+
+df_final <- df_final %>%
+  mutate(across(where(is.numeric), ~ ifelse(. > quantile(., 0.99), quantile(., 0.99), .)))
+
+df_final
+
+```
+
+## Matriz de correlación  
+```{r include=FALSE}
+rcor <- cor(df_final, use = "pairwise.complete.obs")
+det(rcor)
+```
+Nuestro determinante de correlación tiene un valor de **`r det(rcor)`**, el cual puede considerarse cercano a 0, esto resulta ser un problema, ya que indica alta probabilidad de multicolinealidad, lo que hace más dificultoso el estudio del dataset. Sin embargo, no es una prueba determinante, por lo que vale la pena seguir haciendo otras pruebas.   
+
+```{r echo=FALSE}
+
+rcor <- cor(df_final, use = "pairwise.complete.obs")
+
+corrplot(rcor, method = "color", type = "upper", 
+         tl.col = "black", tl.srt = 45, 
+         col = colorRampPalette(c("blue", "white", "red"))(200))
+
+
+```
+Por otro lado al observa la matriz de correlacióon podemos ver que existe un valor alto entre la variable **runtime** y **voteCount** lo que inidica una estrecha relación entre las variables. De la misma manera **budget** y **revenue** están altamente relacionadas. La relación entre **actorsAmount** y **totalActorPopularity** tiende ser predecible, ya que nos dice que mientras más actores haya en el cast, mayor será la popularidad del cast, lo cuál puede sonar obvio. Otra relación que parece interesante es la de **budget** y **voteCount**. Además, cabe mencionar que las variables como **castWomenAmount** y **castMenAiunt** no parece tener relación ninguna otra variable. Por último, podemos observar como tanto la variable **budget** como **revenu** parecen tener la misma relación con **totalActorPopularity**
+
+## Técnica de Análisis Factorial  
+```{r include=FALSE}
+kmo_result <- KMO(as.matrix(df_final))
+
+kmo_global <- round(kmo_result$MSA, 2)
+kmo_vars <- round(kmo_result$MSAi, 2)
+
+high_kmo_vars <- names(kmo_vars[kmo_vars > 0.8])
+
+bartlett_result <- cortest.bartlett(df_final)
+
+chi_sq_value <- round(bartlett_result$chisq, 2)
+p_value <- bartlett_result$p.value
+
+```
+
+Podemos observar que el valor global de KMO (Overall MSA) es **`r kmo_global`**, lo que indica que los datos tienen una adecuación aceptable para un análisis factorial. No es perfecto, pero se puede trabajar.  
+Además, se observa que el KMO de las variables **`r paste(high_kmo_vars, collapse = ", ")`** es mayor a 0.8, lo que significa que están bien representadas en la estructura factorial.  
+
+### Prueba de Esfericidad de Bartlett  
+El valor de chi-cuadrado es de **`r chi_sq_value`**, lo que indica que las relaciones entre las variables son lo suficientemente fuertes como para justificar un análisis factorial.  
+Además, **p = `r p_value`**, lo que confirma que el análisis factorial es adecuado.
+
+### Representación de las variables
+```{r echo=D}
+normal_df<-prcomp(df_final,center=TRUE , scale = TRUE)
+var <- get_pca_var(normal_df)
+corrplot(var$cos2, is.corr = F)
+```
+Se puede observar como las variables **`budget`**, **`revenue`**, **`voteCount`**, **`actorsAmount`** y **`castMenAmount`** tienven valores altos en cos^2 en la Dim 1. Esto indica que PC1 captura principalmente información relacionada con el presupuesto, los ingresos y la cantiadad de votos.  
+**`productionCountriesAmount` ** tiene una alta representación en Dim 2. Lo que sugiere que PC2 está influenciado por el número de países de producción.  
+**`voteAvg`** , **`genresAmount`** , **`runtime`**  tienen contribuciones importantes en Dim 3 y Dim 5. Esto indica que esos componentes podrían estar relacionados con las características del contenido y no con los ingresos.  
+Por otro lado **`popularity`**, **`castWomenAmount`** y **`totalActorPopularity`** tienen valores bajos en casi todas las dimensiones. Esto significa que estas variables no están bien representadas por los primeros componentes y podrían no ser tan relevantes en el análisis.
+
+## Número de componentes principales a utilizar
+El primer componente tiene la desvicación estándar de **`1.96`**, es el que captura la mayor cantidad de varianza. Además, para cubrir el 80% de la varianza total debemos tomar en cuenta hasta PC6, esto ya nos brinda una buena representación de los datos. Si quisiéramos el 85 se debería incluir a PC7.
+```{r include=FALSE}
+normal_df<-prcomp(df_final,center=TRUE , scale = TRUE)
+
+# Varianza explicada por cada componente
+explained_variance <- summary(normal_df)$importance
+
+# Mostrar la varianza acumulada
+explained_variance
+
+```
+### Gráfica de codo 
+```{r echo=FALSE}
+variance_df <- data.frame(
+  PC = seq_along(explained_variance[2, ]),
+  Variance = explained_variance[2, ]
+)
+
+num_components <- which.max(cumsum(variance_df$Variance) >= 0.80)
+
+ggplot(variance_df, aes(x = PC, y = Variance)) +
+  geom_point(size = 3) +
+  geom_line() +
+  geom_vline(xintercept = num_components, linetype = "dashed", color = "red") +
+  geom_text(aes(label = round(Variance, 2)), vjust = -1, size = 3) + 
+  scale_x_continuous(breaks = seq(1, max(variance_df$PC), 1)) +
+  labs(title = "Gráfico de Codo: Varianza Explicada",
+       x = "Componentes Principales",
+       y = "Proporción de Varianza Explicada") +
+  theme_minimal()
+
+```
+Al observar la gráfica se puede apreciar que 6 es la cantidad mínima de componentes que explican al menos el 80% de la varianza. 
+
+
+### Regla de kreiser
+```{r echo=FALSE}
+fviz_eig(normal_df, addlabels = TRUE, ylim = c(0, 80))
+fviz_eig(normal_df, addlabels = TRUE, choice = c("eigenvalue"), ylim = c(0, 3))
+```
+Según la regla de Kreiser, los primeros 5 componentes explican el 80% de la varianza acumulada.Y son también los primeros 5 aquellos componentes cuyos eigenvalores son mayores a 1, por lo que se consideran los más importantes y el resto se puede descartar.
+
+### Conclusión de Número de componentes Principales.
+Se ha decidido trabajar con **5 componentes principales**, basándose en varias pruebas estadísticas. Primero, la **regla de Kaiser-Guttman** indica que solo deben retenerse los componentes con valores propios mayores a 1, criterio que cumplen los primeros cinco. Además, el **gráfico de codo** mostró un punto de inflexión en el quinto componente, sugiriendo que añadir más componentes aportaría poca información adicional.  
+
+Asimismo, la **varianza acumulada** de estos cinco componentes supera el **80%**, lo que garantiza que capturan la mayor parte de la variabilidad del conjunto de datos. Finalmente, el análisis de **cos²** confirmó que variables clave como `budget`, `revenue`, `voteCount`, `actorsAmount` y `castMenAmount` están bien representadas en estos componentes, mientras que variables con baja representación en todas las dimensiones podrían descartarse. Por lo tanto, **trabajar con cinco componentes permite reducir la dimensionalidad sin perder información relevante**.  
+
+## Coeficientes principales
+```{r include=FALSE}
+loadings <- normal_df$rotation
+loadings
+```
+El análisis de los **coeficientes principales (cargas factoriales)** revela que el **PC1** está fuertemente influenciado por `revenue`, `budget`, `voteCount` y `totalActorPopularity`, lo que sugiere que esta dimensión representa el **éxito comercial y la popularidad de la película**. El **PC2**, por otro lado, muestra una alta carga negativa en `productionCountriesAmount` y `castMenAmount`, lo que indica que esta dimensión podría estar relacionada con **la diversidad de producción y el reparto masculino**.  
+
+El **PC3** está dominado por `runtime` y `castWomenAmount`, lo que sugiere una relación con la **duración de la película y la representación femenina en el elenco**. En el **PC4**, la variable `voteAvg` tiene una fuerte influencia negativa, lo que podría reflejar diferencias en la **recepción crítica y la valoración del público**. Finalmente, el **PC5** tiene altas cargas en `genresAmount` y `voteAvg`, lo que sugiere que esta dimensión podría representar la **variedad de géneros y su impacto en la calificación promedio**. 
+
+```{r echo=FALSE}
+fviz_pca_var(normal_df, col.var = "contrib", repel = TRUE)
+
+```
+
