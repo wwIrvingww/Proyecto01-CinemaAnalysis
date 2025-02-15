@@ -19,8 +19,8 @@ library(cluster) #Para calcular la silueta
 library(e1071)#para cmeans
 library(mclust) #mixtures of gaussians
 library(fpc) #para hacer el plotcluster
-library(NbClust) #Para determinar el número de clusters óptimo
-library(factoextra) #Para hacer gráficos bonitos de clustering
+library(NbClust) #Para determinar el numero de clusters optimo
+library(factoextra) #Para hacer graficos bonitos de clustering
 library(hopkins) #Para revisar si vale la pena hacer agrupamiento
 library(FeatureImpCluster) #Para revisar la importancia de las variables en los grupos.
 library(pheatmap) #Para hacer mapa de calor
@@ -32,16 +32,20 @@ movies <- read.csv("./movies.csv")
 ```
 
 ## 1.1 Seleccion de columnas
+
+Estaremos eligiendo los valores numericos de las siguientes columnas: "id", "popularity", "budget", "revenue", "runtime", "genresAmount", "productionCountriesAmount", "releaseDate", "voteCount", "voteAvg", "actorsPopularity", "actorsAmount", "castWomenAmount", "castMenAmount"
+
 ```{r echo=FALSE}
 columns <- c("id", "popularity", "budget", "revenue", "runtime", "genresAmount", "productionCountriesAmount", "releaseDate", "voteCount", "voteAvg", "actorsPopularity", "actorsAmount", "castWomenAmount", "castMenAmount")
 
 selected_movies_clustr <- movies[,columns]
 
-selected_movies_clustr
+head(selected_movies_clustr)
 
 ```
 
 # Conversion de columnas no numericas
+Para todos los datos nos aseguraremos de que sean valores numericos. Ademas en el caso de actorsPopularity, parseamos la popularidad de todos usando los pipes "|" y la suamos para tener una sola columna.
 ```{r echo=FALSE}
 pupoular_sum <- selected_movies_clustr %>%
   separate_rows( actorsPopularity, sep = "|") %>%
@@ -49,7 +53,7 @@ pupoular_sum <- selected_movies_clustr %>%
   group_by(id) %>%
   summarise(totalActorPopularity = sum(actorsPopularity, na.rm = TRUE))
 
-pupoular_sum
+head(pupoular_sum)
 
 df_final <- selected_movies_clustr %>%
   left_join(pupoular_sum, by = "id")
@@ -83,7 +87,10 @@ df_final$castMenAmount[is.na(df_final$castMenAmount)] <- 0
 
 # Aqui se puede probar con tamanios distintos de muestras. 
 # df_final <- df_final[sample(nrow(df_final), 100), ]
+```
 
+Aqui lo que se hace es contaibilizar los puntos atipicos. Al realizar bastantes pruebas nos dimos cuenta que estos valores hacen mucho ruido y generan problemas al momento de realizar los grupos. Entonces vemos si hay bastantes  atipicos y luego los arreglamos para luego hacer el clustering.
+```{r echo=FALSE}
 z_scores <- scale(df_final) 
 outliers <- apply(abs(z_scores) > 3, 2, sum)  # Count extreme values
 print(outliers)
@@ -91,11 +98,10 @@ print(outliers)
 df_final <- df_final %>%
   mutate(across(where(is.numeric), ~ ifelse(. > quantile(., 0.99), quantile(., 0.99), .)))
 
-df_final
+head(df_final)
 
 ```
-## Escalado de los datos
-Es importante escalar los datos antes de realizar agrupamientos cuando se utilizan tecnicas de aprendizaje no supervisado como lo es el clustering. Dentro del data set tenemos unicamente vlores numericos, entonces podemos escalarlos para que el agrupamiento funcione mejor.
+
 
 ```{r echo=FALSE}
 # Comentado de momento, escalar los datos impide que se vea el grafico de codo bien
@@ -146,8 +152,8 @@ plot(1:8, wss, type = "b", pch = 19, col = "blue",
 #})
 
 #plot(2:8, sil_width, type = "b", pch = 19, col = "blue", 
-#     xlab = "Número de Clusters", ylab = "Ancho de Silueta",
-#     main = "Método de la Silueta")
+#     xlab = "Numero de Clusters", ylab = "Ancho de Silueta",
+#     main = "Metodo de la Silueta")
 ```
 
 Como se puede observar el grafico de codo indica que la cantidad ideal de grupos es 3 o 4. Justo en esa parte de la grafica es donde se ve la forma que indica la cantidad de grupos apropiados para realizar el clustering. 
@@ -164,11 +170,18 @@ km <- kmeans(df_final,3,iter.max = 1000)
 
 df_final$grupo <- km$cluster
 
-km
+head(km)
 
 fviz_cluster(km, data = df_final, ellipse.type = "norm")
 
 km$withinss
+
+```
+
+Aqui podemos ver el valor de cuanto varian los grupos resultantes del kmea
+```{r echo=FALSE}
+km$withinss
+
 ```
 
 ### Clustering jerarquico
@@ -222,6 +235,9 @@ df_final <- df_final %>%
 ```
 
 # Analisis de las variables numericas
+
+En la siguiente parte se muestran graficas que muestran la medida de tendencia central de las varaibles nmumericas. Ademas de eso, colocamos graficos de barras sobre las variables numericas agrupando por los clusters. Esto con el fin de encontrar patrones, relaciones y comportamientos interesantes entre los datos agrupados.
+
 ```{r echo=FALSE}
 
 df_final %>%
@@ -235,10 +251,10 @@ df_final %>%
   ggplot(aes(x = valor, fill = as.factor(grupo))) +
   geom_histogram(alpha = 0.6, bins = 30, position = "identity") +
   facet_wrap(~ variable, scales = "free") +
-  labs(title = "Distribución de Variables Numéricas para Grupo 1", x = "Valor", y = "Frecuencia") +
+  labs(title = "Distribucion de Variables Numericas para Grupo 1", x = "Valor", y = "Frecuencia") +
   theme_minimal()
 
-# Histograma para los demás grupos
+# Histograma para los demas grupos
 df_final %>%
   filter(grupo != 1) %>%
   pivot_longer(cols = c(budget, revenue, runtime, genresAmount, voteCount, voteAvg, actorsAmount, totalActorPopularity), 
@@ -246,7 +262,7 @@ df_final %>%
   ggplot(aes(x = valor, fill = as.factor(grupo))) +
   geom_histogram(alpha = 0.6, bins = 30, position = "identity") +
   facet_wrap(~ variable, scales = "free") +
-  labs(title = "Distribución de Variables Numéricas para Otros Grupos", x = "Valor", y = "Frecuencia") +
+  labs(title = "Distribucion de Variables Numericas para Otros Grupos", x = "Valor", y = "Frecuencia") +
   theme_minimal()
 
 df_promedios <- df_final %>%
@@ -262,17 +278,17 @@ df_promedios_grandes <- df_promedios %>%
 ggplot(df_promedios_grandes, aes(x = as.factor(grupo), y = promedio, fill = as.factor(grupo))) +
   geom_col(position = "dodge") +
   facet_wrap(~ variable, scales = "free") +
-  labs(title = "Promedio de Variables con Valores Grandes por Grupo", x = "Grupo", y = "Promedio") +
+  labs(title = "Promedio de budget y revenue por grupo", x = "Grupo", y = "Promedio") +
   theme_minimal()
 
-# Variables con valores más pequeños
+# Variables con valores mas pequeños
 df_promedios_pequenos <- df_promedios %>%
   filter(variable %in% c("runtime", "genresAmount", "voteCount", "voteAvg", "actorsAmount", "totalActorPopularity"))
 
 ggplot(df_promedios_pequenos, aes(x = as.factor(grupo), y = promedio, fill = as.factor(grupo))) +
   geom_col(position = "dodge") +
   facet_wrap(~ variable, scales = "free") +
-  labs(title = "Promedio de Variables con Valores Pequeños por Grupo", x = "Grupo", y = "Promedio") +
+  labs(title = "Promedio de Variables numericas", x = "Grupo", y = "Promedio") +
   theme_minimal()
 
 
@@ -288,6 +304,8 @@ ggplot(df_final, aes(x = as.factor(grupo), y = budget)) +
 ```
 
 # Analisis de frecuencia con variables categoricas
+
+Ahora en esta aparte realizamos la misma estrategia. Tomamos los datos categoricos y obtenemos las frecuencias de forma agrupada. De esta manera conocemos las tendencias de los clusters encontrados.
 ```{r  echo=FALSE}
 df_final %>%
   separate_rows(genres, sep = "\\|") %>%
@@ -295,7 +313,7 @@ df_final %>%
   ggplot(aes(x = genres, y = n, fill = as.factor(grupo))) +
   geom_col(position = "dodge") +
   coord_flip() +
-  labs(title = "Frecuencia de Géneros por Grupo", x = "Genero", y = "Frecuencia")
+  labs(title = "Frecuencia de Generos por Grupo", x = "Genero", y = "Frecuencia")
 
 df_final <- df_final %>%
   mutate(across(where(is.character), ~ iconv(.x, from = "latin1", to = "UTF-8")))
@@ -304,7 +322,7 @@ df_final %>%
   separate_rows(productionCompany, sep = "\\|") %>%
   count(grupo, productionCompany) %>%
   group_by(grupo) %>%
-  slice_max(n, n = 10) %>%  # Filtrar los 10 más frecuentes de cada grupo
+  slice_max(n, n = 10) %>%  # Filtrar los 10 mas frecuentes de cada grupo
   ungroup() %>%
   ggplot(aes(x = reorder(productionCompany, n), y = n, fill = as.factor(grupo))) +
   geom_col(position = "dodge") +
@@ -316,19 +334,19 @@ df_final %>%
   separate_rows(productionCountry, sep = "\\|") %>%
   count(grupo, productionCountry) %>%
   group_by(grupo) %>%
-  slice_max(n, n = 10) %>%  # Filtrar los 10 países más frecuentes por grupo
+  slice_max(n, n = 10) %>%  # Filtrar los 10 paises mas frecuentes por grupo
   ungroup() %>%
   ggplot(aes(x = reorder(productionCountry, n), y = n, fill = as.factor(grupo))) +
   geom_col(position = "dodge") +
   coord_flip() +
-  labs(title = "Top 10 Production Countries por Grupo", x = "País", y = "Frecuencia") +
+  labs(title = "Top 10 Production Countries por Grupo", x = "Pais", y = "Frecuencia") +
   theme_minimal()
 
 df_final %>%
   separate_rows(director, sep = "\\|") %>%
   count(grupo, director) %>%
   group_by(grupo) %>%
-  slice_max(n, n = 10) %>%  # Filtrar los 10 países más frecuentes por grupo
+  slice_max(n, n = 10) %>%  # Filtrar los 10 paises mas frecuentes por grupo
   ungroup() %>%
   ggplot(aes(x = reorder(director, n), y = n, fill = as.factor(grupo))) +
   geom_col(position = "dodge") +
@@ -340,8 +358,8 @@ df_final %>%
 
 # Conclusiones 
 
-Luego de ver los resultados del agrupamiento tenemos 2 grupos que llaman la atención principalmente, el grupo 1 y el grupo 2. Analizando primero el grupo 2 nos podemos dar cuenta que es el grupo que tiene más datos de todos. Este es un cluster bastante grande y que tiene una gran variedad de películas. Este es particularmente para útil ver cuáles son los datos más comunes y populares dentro del set de datos en general. En este se pueden ver varios datos interesantes como los géneros de películas más comunes, por ejemplo, Drama, acción, thriller, comedia y horrar, son de los datos que más se repiten en el grupo 1. Osea que en general son los géneros de película más producidos. Además de esto podemos ver a las productoras, siendo las más recurrentes Warner Bros y Universal. Otra cosa es que en general casi todas las películas fueron producidas en algún punto en Estados unidos. Luego se puede ver que hay Directores que han participado en una cantidad enorme de proyectos en comparación a los demás. Siendo Sam Liu el mayor participe en la dirección de películas, seguido de Kunihiko Yuyama y Woody Allen.  
+Luego de ver los resultados del agrupamiento tenemos 2 grupos que llaman la atencion principalmente, el grupo 1 y el grupo 2. Analizando primero el grupo 2 nos podemos dar cuenta que es el grupo que tiene mas datos de todos. Este es un cluster bastante grande y que tiene una gran variedad de peliculas. Este es particularmente para util ver cuales son los datos mas comunes y populares dentro del set de datos en general. En este se pueden ver varios datos interesantes como los generos de peliculas mas comunes, por ejemplo, Drama, accion, thriller, comedia y horrar, son de los datos que mas se repiten en el grupo 1. Osea que en general son los generos de pelicula mas producidos. Ademas de esto podemos ver a las productoras, siendo las mas recurrentes Warner Bros y Universal. Otra cosa es que en general casi todas las peliculas fueron producidas en algun punto en Estados unidos. Luego se puede ver que hay Directores que han participado en una cantidad enorme de proyectos en comparacion a los demas. Siendo Sam Liu el mayor participe en la direccion de peliculas, seguido de Kunihiko Yuyama y Woody Allen.  
 
-Pero es importante mencionar algo, que sea el cluster de películas más grande no quiere decir que sea el más exitoso. La otra parte interesante de este análisis se encuentra en el grupo 1. Como se pudo observar en las gráficas, el grupo 4 tiene menor representación y frecuencia en casi todas las ocasiones, pero esto no es algo malo. Si observamos la gráfica de valores promedio por grupo, podemos ver que el budget y revenue de las películas del grupo 2 no es muy alto en comparación a los demás grupos. Las películas del grupo 2, son de bajo presupuesto y por eso es que son las más comunes dentro de todos. Mientras que las películas del grupo 1, son los que fueron agrupados por ser más costosos, pero con mucho más ganancia en retorno.  Las películas con la mayor cantidad de budget por lo general tienen mayor popularidad en los actores, mejor nota promedio y son películas más largas. Y finalmente una relación bastante interesante que encontramos es la relación del director con las películas. Al ver el top 10 directores recurrentes en las películas (por grupo) podemos destacar los nombres de muchos directores de cine famosos que han hecho grandes éxitos. Directores como Steven Spilberg, Peter Jackson, Michael Bay, George Lucas, Christopher Nolan, entro otros. 
+Pero es importante mencionar algo, que sea el cluster de peliculas mas grande no quiere decir que sea el mas exitoso. La otra parte interesante de este analisis se encuentra en el grupo 1. Como se pudo observar en las graficas, el grupo 4 tiene menor representacion y frecuencia en casi todas las ocasiones, pero esto no es algo malo. Si observamos la grafica de valores promedio por grupo, podemos ver que el budget y revenue de las peliculas del grupo 2 no es muy alto en comparacion a los demas grupos. Las peliculas del grupo 2, son de bajo presupuesto y por eso es que son las mas comunes dentro de todos. Mientras que las peliculas del grupo 1, son los que fueron agrupados por ser mas costosos, pero con mucho mas ganancia en retorno.  Las peliculas con la mayor cantidad de budget por lo general tienen mayor popularidad en los actores, mejor nota promedio y son peliculas mas largas. Y finalmente una relacion bastante interesante que encontramos es la relacion del director con las peliculas. Al ver el top 10 directores recurrentes en las peliculas (por grupo) podemos destacar los nombres de muchos directores de cine famosos que han hecho grandes exitos. Directores como Steven Spilberg, Peter Jackson, Michael Bay, George Lucas, Christopher Nolan, entro otros. 
 
-Al final los grupos dan a entender que estan categorizados respecto al costo, el revenue y el éxito que estás películas han tenido debido a sus actores y/o directores. 
+Al final los grupos dan a entender que estan categorizados respecto al costo, el revenue y el exito que estas peliculas han tenido debido a sus actores y/o directores. 
