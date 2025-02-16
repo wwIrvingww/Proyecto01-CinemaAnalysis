@@ -1,0 +1,107 @@
+---
+title: "A priori"
+author: "Irving, Chuy"
+date: "2025-02-15"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(dplyr)
+library(tidyr)
+library(arules)
+```
+
+En este informe se crearán reglas de asociación utilizando el algoritmo A priori.
+
+```{r, include=FALSE}
+movies <- read.csv("./movies.csv")
+```
+
+```{r, include=FALSE}
+# Chunk 1: Preparación de columnas numéricas
+# Selección y transformación de columnas numéricas
+columns <- c("id", "popularity", "budget", "revenue", "runtime", "genresAmount", "productionCountriesAmount", "releaseDate", "voteCount", "voteAvg", "actorsPopularity", "actorsAmount", "castWomenAmount", "castMenAmount")
+
+selected_movies_clustr <- movies[, columns]
+
+# Conversión de columnas no numéricas y cálculo de popularidad total de actores
+pupoular_sum <- selected_movies_clustr %>%
+  separate_rows(actorsPopularity, sep = "\\|") %>%
+  mutate(actorsPopularity = as.numeric(actorsPopularity)) %>%
+  group_by(id) %>%
+  summarise(totalActorPopularity = sum(actorsPopularity, na.rm = TRUE))
+
+# Unir la popularidad total al dataframe principal
+df_final <- selected_movies_clustr %>%
+  left_join(pupoular_sum, by = "id") %>%
+  select(-actorsPopularity)
+
+# Convertir la fecha y eliminar columnas no necesarias
+df_final$releaseDate <- as.Date(df_final$releaseDate, format = "%d/%m/%Y")
+df_final <- df_final %>% select(-releaseDate)
+df_ids <- selected_movies_clustr %>% select(id)
+df_final <- df_final %>% select(-id)
+
+# Filtrar y limpiar datos
+df_final <- df_final %>%
+  mutate(
+    castWomenAmount = ifelse(grepl("^[0-9]+$", castWomenAmount), as.integer(castWomenAmount), NA),
+    castMenAmount = ifelse(grepl("^[0-9]+$", castMenAmount), as.integer(castMenAmount), NA)
+  )
+
+# Reemplazar NA con 0
+df_final$castWomenAmount[is.na(df_final$castWomenAmount)] <- 0
+df_final$castMenAmount[is.na(df_final$castMenAmount)] <- 0
+
+# Manejo de outliers
+z_scores <- scale(df_final)
+outliers <- apply(abs(z_scores) > 3, 2, sum)  # Contar valores extremos
+print(outliers)
+
+df_final <- df_final %>%
+  mutate(across(where(is.numeric), ~ ifelse(. > quantile(., 0.99), quantile(., 0.99), .)))
+
+# Añadir 'id' para la unión posterior
+df_final <- df_final %>%
+  mutate(id = df_ids$id)
+```
+
+```{r, include=FALSE}
+# Chunk 2: Preparación de columnas categóricas (optimizado)
+# Definir las columnas categóricas que necesitan transformación
+categorical_columns <- c("genres", "productionCompany", "productionCompanyCountry",
+                         "productionCountry", "director", "originalTitle", "actors", "originalLanguage")
+
+# Columnas que necesitan ser separadas por "|"
+columns_to_separate <- c("genres", "productionCompany", "productionCompanyCountry",
+                         "productionCountry", "director", "actors")
+
+# Asegurar que las columnas sean de tipo character, manejar codificación UTF-8 y reemplazar NA por ""
+movies_cleaned <- movies %>%
+  mutate(across(all_of(categorical_columns), ~ as.character(.))) %>%  # Convertir a character
+  mutate(across(all_of(categorical_columns), ~ iconv(., to = "UTF-8"))) %>%  # Convertir a UTF-8
+  mutate(across(all_of(categorical_columns), ~ ifelse(is.na(.), "", .))) %>%  # Reemplazar NA por ""
+  mutate(across(all_of(categorical_columns), ~ gsub("^\\s+|\\s+$", "", .)))  # Eliminar espacios en blanco
+
+# Separar solo las columnas que necesitan ser divididas por "|"
+for (col in columns_to_separate) {
+  movies_cleaned <- movies_cleaned %>%
+    separate_rows(all_of(col), sep = "\\|")
+}
+
+# Eliminar duplicados después de la separación
+movies_cleaned <- movies_cleaned %>% distinct()
+
+```
+
+```{r}
+# Chunk 3: Unión de columnas numéricas y categóricas
+# Unir con las variables numéricas ya transformadas en `df_final`
+df_prepared <- df_final %>%
+  left_join(movies_cleaned, by = "id") %>%  # Unir datos numéricos y categóricos
+  select(-id)  # Eliminar ID si no es necesario
+
+# Verificar la estructura del dataset final
+str(df_prepared)
+```

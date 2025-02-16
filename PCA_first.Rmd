@@ -136,7 +136,7 @@ El valor de chi-cuadrado es de **`r chi_sq_value`**, lo que indica que las relac
 Además, **p = `r p_value`**, lo que confirma que el análisis factorial es adecuado.
 
 ### Representación de las variables
-```{r echo=D}
+```{r echo=FALSE}
 normal_df<-prcomp(df_final,center=TRUE , scale = TRUE)
 var <- get_pca_var(normal_df)
 corrplot(var$cos2, is.corr = F)
