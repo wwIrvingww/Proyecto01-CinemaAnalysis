@@ -10,6 +10,7 @@ knitr::opts_chunk$set(echo = TRUE)
 library(dplyr)
 library(tidyr)
 library(arules)
+library(arulesViz)
 ```
 
 En este informe se crearán reglas de asociación utilizando el algoritmo A priori.
@@ -18,7 +19,7 @@ En este informe se crearán reglas de asociación utilizando el algoritmo A prio
 movies <- read.csv("./movies.csv")
 ```
 
-```{r, include=FALSE}
+```{r columnas_numéricas, include=FALSE}
 # Chunk 1: Preparación de columnas numéricas
 # Selección y transformación de columnas numéricas
 columns <- c("id", "popularity", "budget", "revenue", "runtime", "genresAmount", "productionCountriesAmount", "releaseDate", "voteCount", "voteAvg", "actorsPopularity", "actorsAmount", "castWomenAmount", "castMenAmount")
@@ -67,7 +68,7 @@ df_final <- df_final %>%
   mutate(id = df_ids$id)
 ```
 
-```{r, include=FALSE}
+```{r columnas_categoricas, include=FALSE}
 # Chunk 2: Preparación de columnas categóricas (optimizado)
 # Definir las columnas categóricas que necesitan transformación
 categorical_columns <- c("genres", "productionCompany", "productionCompanyCountry",
@@ -95,7 +96,7 @@ movies_cleaned <- movies_cleaned %>% distinct()
 
 ```
 
-```{r}
+```{r dataset_final, include=FALSE}
 # Chunk 3: Unión de columnas numéricas y categóricas
 # Unir con las variables numéricas ya transformadas en `df_final`
 df_prepared <- df_final %>%
@@ -105,3 +106,206 @@ df_prepared <- df_final %>%
 # Verificar la estructura del dataset final
 str(df_prepared)
 ```
+
+```{r factorizacion, include=FALSE}
+# Chunk 1: Convertir a factores
+# Renombrar columnas para eliminar sufijos
+df_prepared <- df_prepared %>%
+  rename_with(~ gsub("\\.x$", "", .), ends_with(".x")) %>%  # Quitar sufijo ".x"
+  select(-ends_with(".y"))  # Eliminar columnas con sufijo ".y"
+
+# Eliminar columnas innecesarias
+df_prepared <- df_prepared %>%
+  select(-homePage, -video, -actorsCharacter, -title, -originalTitle)
+
+# Convertir columnas categóricas en factores
+categorical_columns <- c("genres", "productionCompany", "productionCompanyCountry",
+                         "productionCountry", "director", "actors", "originalLanguage")
+
+df_prepared <- df_prepared %>%
+  mutate(across(all_of(categorical_columns), as.factor))
+
+# Convertir 'releaseDate' en décadas y factorizarla
+df_prepared <- df_prepared %>%
+  mutate(releaseYear = as.numeric(format(as.Date(releaseDate, format = "%d/%m/%Y"), "%Y"))) %>%
+  mutate(releaseDecade = cut(releaseYear,
+                             breaks = c(1900, 1950, 1980, 2000, 2010, 2020, Inf),
+                             labels = c("Antes de 1950", "1950s-1970s", "1980s-1990s", "2000s", "2010s", "2020s"),
+                             right = FALSE)) %>%
+  select(-releaseDate, -releaseYear)  # Eliminar columnas originales
+
+```
+
+```{r discretizacion, include=FALSE}
+# Paso 1: Identificar y eliminar columnas duplicadas antes de cualquier transformación
+duplicated_cols <- colnames(df_prepared)[duplicated(colnames(df_prepared))]
+if (length(duplicated_cols) > 0) {
+  df_prepared <- df_prepared %>% select(-one_of(duplicated_cols))
+}
+
+# Paso 2: Filtrar `numeric_columns` para que solo contenga las columnas que existen en `df_prepared`
+numeric_columns <- intersect(numeric_columns, colnames(df_prepared))
+
+# Paso 3: Asegurar que todas las columnas en `numeric_columns` sean numéricas antes de discretizar
+df_prepared <- df_prepared %>%
+  mutate(across(all_of(numeric_columns), ~ suppressWarnings(as.numeric(as.character(.))), .names = "numeric_{.col}"))
+
+# Paso 4: Aplicar discretización sobre las columnas numéricas recién convertidas
+df_prepared <- df_prepared %>%
+  mutate(across(starts_with("numeric_"), ~ discretize(., method = "interval", breaks = 3, labels = c("Bajo", "Medio", "Alto")), .names = "{.col}"))
+
+# Paso 5: Renombrar columnas discretizadas eliminando el prefijo `numeric_`
+colnames(df_prepared) <- gsub("^numeric_", "", colnames(df_prepared))
+
+# Paso 6: Asegurar que `actorsPopularity` también se trate correctamente
+if ("actorsPopularity" %in% colnames(df_prepared)) {
+  # Si hay múltiples columnas con el mismo nombre, eliminarlas
+  df_prepared <- df_prepared %>% select(-matches("^actorsPopularity\\.[0-9]+$"))
+
+  # Si `actorsPopularity` no es numérico, lo limpiamos
+  if (!is.numeric(df_prepared$actorsPopularity)) {
+    df_prepared <- df_prepared %>%
+      mutate(actorsPopularity = gsub("[^0-9.]", "", actorsPopularity)) %>%  # Eliminar caracteres no numéricos
+      mutate(actorsPopularity = suppressWarnings(as.numeric(actorsPopularity)))  # Convertir a numérico
+  }
+
+  # Paso 7: Discretizar `actorsPopularity`
+  df_prepared <- df_prepared %>%
+    mutate(actorsPopularity = ifelse(is.na(actorsPopularity), 0, actorsPopularity)) %>%
+    mutate(actorsPopularity = discretize(actorsPopularity, method = "interval", breaks = 3, labels = c("Bajo", "Medio", "Alto"))) %>%
+    mutate(actorsPopularity = as.factor(actorsPopularity))  # Convertir a factor
+}
+
+```
+
+```{r transaccion, include=FALSE}
+# Convertir el dataframe en transacciones
+transactions <- as(df_prepared, "transactions")
+
+# Verificar la estructura de las transacciones
+inspect(transactions[1:5])  # Muestra las primeras 5 transacciones
+```
+
+Al analizar la frecuencia de los items se opta por eliminar los más repetidos para evitar sesgo.
+```{r grafica_items, echo=FALSE}
+itemFrequencyPlot(transactions, topN=50, cex.names=.5)
+
+```
+
+```{r limpieza,echo=FALSE}
+items_to_remove <- names(itemFrequency(transactions))[itemFrequency(transactions) > 0.8]
+transactions_filtered <- transactions[, !colnames(transactions) %in% items_to_remove]
+```
+
+## Primera regla
+El análisis de reglas de asociación aplicado al dataset de películas reveló patrones interesantes en la relación entre las características de las películas y los directores. En particular, se encontró que la mayoría de las reglas generadas predicen que el director es Sam Mendes, con una confianza del 100% y un lift extremadamente alto (79.67). Esto sugiere que ciertas combinaciones de atributos (presupuesto medio, alta cantidad de votos, número moderado de países de producción y actores con popularidad media) se asocian fuertemente con películas dirigidas por Mendes.  
+
+Sin embargo, esta concentración en un solo director indica un sesgo en las reglas generadas, posiblemente debido a los parámetros utilizados en el algoritmo Apriori. Para abordar esto, se realizó un filtrado de ítems demasiado frecuentes (presentes en más del 80% de las transacciones) con el fin de evitar reglas triviales y encontrar asociaciones más diversas. Aun así, las reglas resultantes continuaron favoreciendo patrones donde el director era el elemento más predecible.  
+```{r primera_regla,echo=FALSE}
+# Aplicar el algoritmo Apriori con soporte y confianza ajustados
+rules <- apriori(transactions_filtered, 
+                 parameter = list(supp = 0.01, conf = 0.8, minlen = 2))
+
+# Ver las 10 reglas más relevantes
+inspect(head(sort(rules, by = "lift"), 10))
+
+```
+
+```{r primera_grafica, echo=FALSE}
+# Graficar las 50 reglas más relevantes según lift
+plot(head(sort(rules, by = "lift"), n=50), method = "graph", control=list(cex=.8))
+```
+
+## Segunda regla
+El análisis de reglas de asociación ha revelado que ciertas características permiten predecir con alta confianza el idioma original de una película. En particular, las reglas identificadas muestran que cuando una película tiene un bajo presupuesto, una gran cantidad de géneros, un alto promedio de votos, es producida en Japón y fue lanzada en la década de 2010, la probabilidad de que su idioma original sea japonés (originalLanguage=ja) es del 99.49%.
+
+Este hallazgo indica que el idioma de una película no es un factor aleatorio, sino que está altamente influenciado por la combinación de su país de producción, su presupuesto y su estructura de géneros. El alto lift (34.06) sugiere que esta combinación de características hace que la probabilidad de que una película sea en japonés sea 34 veces mayor en comparación con una película seleccionada al azar.
+
+Además, el hecho de que muchas reglas similares refuercen la misma conclusión sugiere que el cine japonés sigue patrones específicos en términos de recursos de producción y éxito en votaciones. Un presupuesto bajo y una gran variedad de géneros podrían ser una estrategia común en la industria cinematográfica japonesa para atraer audiencias diversas sin requerir grandes inversiones.
+
+Dado que estas reglas pueden proporcionar insights valiosos para la industria cinematográfica, un siguiente paso sería explorar si este patrón es único de Japón o si otros países presentan tendencias similares en su producción cinematográfica.
+```{r segunda_regla, include=FALSE}
+
+# Convertir RHS a texto antes de filtrar
+rules_no_directors <- subset(rules, !grepl("director=", labels(rhs(rules))))
+
+# Verificar las reglas filtradas
+inspect(head(sort(rules_no_directors, by = "lift"), 10))
+
+
+```
+
+## Tercera regla
+El análisis de reglas de asociación revela patrones clave sobre el éxito financiero de las películas y las tendencias de producción cinematográfica. Una de las reglas más relevantes indica que si una película tiene un presupuesto alto y un alto número de votos, es muy probable que también tenga una alta recaudación (confidence = 89.09%, lift = 30.38). Esto sugiere que las inversiones significativas en producción y marketing, combinadas con un impacto fuerte en la audiencia, aumentan drásticamente la probabilidad de éxito en taquilla. Este hallazgo es consistente con las dinámicas de la industria del cine, donde las películas con mayor presupuesto tienden a recibir más promoción, mejor distribución y, en consecuencia, mayor número de espectadores.
+```{r tercera_tegla, include=FALSE}
+# Filtrar reglas que NO incluyan idiomas en el RHS
+rules_no_language <- subset(rules_no_directors, !grepl("originalLanguage=", labels(rhs(rules_no_directors))))
+
+# Verificar las reglas filtradas
+inspect(head(sort(rules_no_language, by = "lift"), 10))
+
+```
+
+```{r tercera_regla, echo=FALSE}
+
+# Graficar las nuevas reglas más relevantes
+plot(head(sort(rules_no_language, by = "lift"), n=50), method = "graph", control=list(cex=.8))
+
+```
+
+## Cuarta regla
+El análisis de reglas de asociación ha revelado que ciertos géneros cinematográficos están estrechamente relacionados con la duración de las películas. Se encontró que películas del género historia (genres=History), drama (genres=Drama) y guerra (genres=War) tienen una alta probabilidad de ser más largas (runtime=Alto), especialmente cuando también cuentan con un alto promedio de votos (voteAvg=Alto) y una cantidad considerable de actores (actorsAmount=Medio o Alto).
+
+Estos hallazgos indican que los géneros con una narrativa más profunda o basada en hechos históricos suelen requerir más tiempo en pantalla, lo que es consistente con las expectativas de la audiencia y las estrategias de producción. Además, la relación entre votación alta y duración sugiere que las películas largas en estos géneros pueden ser bien recibidas por el público, lo que refuerza su permanencia en la industria.
+
+Por otro lado, las reglas también muestran que el presupuesto no siempre es un factor determinante en la duración de una película histórica, ya que incluso aquellas con un presupuesto bajo en la década de 2010 presentaron una duración extensa. Este resultado puede reflejar estrategias de producción en las que el contenido y la narrativa son más importantes que el presupuesto en estos géneros específicos.
+```{r cuarta_regla, echo=FALSE}
+rules_with_genres <- subset(rules_no_language, lhs %pin% "genres=")
+inspect(head(sort(rules_with_genres, by = "lift"), 10))
+
+```
+
+## Quinta regla
+El análisis de reglas de asociación ha revelado factores clave que determinan el éxito financiero de una película, destacando la importancia del presupuesto, la cantidad de votos recibidos y el número de países de producción. Se encontró que las películas con un presupuesto alto y un alto número de votos tienen una probabilidad del 89% de generar una alta recaudación (revenue=Alto), lo que sugiere que la inversión en producción y marketing, junto con una fuerte aceptación del público, son determinantes para el éxito en taquilla. Esta conclusión refuerza las estrategias utilizadas en la industria cinematográfica, donde las grandes producciones con una amplia campaña de distribución suelen atraer más espectadores y generar mayores ingresos.
+
+Por otro lado, las reglas también identificaron patrones en películas con recaudación moderada (revenue=Medio), donde el número de países involucrados en la producción (productionCountriesAmount=Medio) y la presencia de ciertos directores como Sam Mendes son factores determinantes. La confianza del 100% en estas reglas indica que cada vez que una película tiene estas características, es seguro que su recaudación será moderada. Este hallazgo sugiere que el número de países involucrados en la producción puede influir en la distribución internacional y, en consecuencia, en el rendimiento económico de la película.
+```{r quinta_regla, include=FALSE}
+# Filtrar reglas que predicen revenue=Alto
+rules_revenue <- subset(rules_no_language, rhs %pin% "revenue=")
+
+# Verificar las reglas filtradas
+inspect(head(sort(rules_revenue, by = "lift"), 10))
+
+```
+
+```{r quinta_grafica, echo=FALSE}
+library(arulesViz)
+
+# Graficar las reglas más relevantes sobre revenue
+plot(head(sort(rules_revenue, by = "lift"), n=50), method = "graph", control=list(cex=.8))
+
+```
+
+## Sexta regla
+El análisis de reglas de asociación ha revelado que las películas con un número reducido de actores (actorsAmount=Bajo) y una alta valoración del público (voteAvg=Alto) tienen una alta probabilidad de haber sido producidas en Japón (productionCountry=Japan). Este patrón, respaldado por una confianza superior al 96% y un lift de 24.2, sugiere que el cine japonés sigue un modelo de producción caracterizado por repartos más pequeños en comparación con otras industrias cinematográficas.
+
+Además, las reglas indican que estas películas suelen tener una duración media (runtime=Medio) y fueron producidas mayoritariamente en la década de 2010 (releaseDecade=2010s), lo que refuerza la idea de que el cine japonés logra equilibrar la cantidad de actores con tiempos de ejecución eficientes, sin afectar la calidad percibida por el público.
+
+Un hallazgo clave es que, a pesar de contar con menos actores, estas películas han logrado altos puntajes de votación (voteAvg=Alto), lo que implica que la popularidad y el impacto de una película no dependen exclusivamente del tamaño del reparto, sino de otros factores como la narrativa, la dirección y el estilo de producción. Esto podría explicar por qué las películas japonesas con estas características han mantenido una fuerte identidad en el mercado global.
+```{r sexta_regla, include=FALSE}
+# Filtrar reglas donde la cantidad de actores o su popularidad están en el lado izquierdo (lhs)
+rules_actors <- subset(rules_no_language, lhs %pin% "actors")
+
+# Verificar las reglas filtradas
+inspect(head(sort(rules_actors, by = "lift"), 10))
+
+```
+
+```{r sexta_grafica, echo=FALSE}
+library(arulesViz)
+
+# Graficar las reglas más relevantes sobre actores
+plot(head(sort(rules_actors, by = "lift"), n=50), method = "graph", control=list(cex=.8))
+
+```
+
